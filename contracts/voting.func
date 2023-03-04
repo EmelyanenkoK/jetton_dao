@@ -1,0 +1,202 @@
+#include "stdlib.func";
+#include "jetton-utils.func";
+#include "dao-utils.func";
+;;#include "error-codes.func";
+#include "op-codes.func";
+;;#include "params.func";
+#include "messages.func";
+
+
+global int init;
+global slice dao_address;
+global int voting_id;
+global int expiration_date;
+global int voting_type;
+global cell proposal;
+global cell wallet_code;
+global cell vote_keeper_code;
+global int voted_for;
+global int voted_against;
+global int executed;
+global slice initiator;
+
+const int min_storage_fee = 30000000;
+{-
+   uninit$0 jetton_master:MsgAddressInt voting_id:uint64 = Storage;
+-}
+() load_uninit_data() impure {
+    slice cs = get_data().begin_parse();
+    init = cs~load_int(1);
+    throw_if(error::already_inited, init);
+    dao_address = cs~load_msg_addr();
+    voting_id = cs~load_int(64);
+}
+{-
+   init$1 jetton_master:MsgAddressInt voting_id:uint64
+            expiration_date:uint48
+            voting_type:uint64 proposal:^Cell
+            wallet_code:^Cell
+            vote_keeper_code:^Cell
+            voted_for:Coins voted_against:Coins
+            executed:Bool initiator:MsgAddressInt
+            = Storage;
+-}
+() load_data() impure {
+    slice cs = get_data().begin_parse();
+    init = cs~load_int(1);
+    throw_unless(error::not_inited, init);
+    dao_address = cs~load_msg_addr();
+    voting_id = cs~load_int(64);
+    expiration_date = cs~load_int(48);
+    voting_type = cs~load_int(64);
+    proposal = cs~load_ref();
+    wallet_code = cs~load_ref();
+    vote_keeper_code = cs~load_ref();
+    voted_for = cs~load_coins();
+    voted_against = cs~load_coins();
+    executed = cs~load_int(1);
+    initiator = cs~load_msg_addr();
+}
+
+() save_data() impure {
+    set_data(begin_cell()
+                  .store_int(init, 1)
+                  .store_slice(dao_address)
+                  .store_uint(voting_id, 64)
+                  .store_uint(expiration_date, 48)
+                  .store_uint(voting_type, 64)
+                  .store_ref(proposal)
+                  .store_ref(wallet_code)
+                  .store_ref(vote_keeper_code)
+                  .store_coins(voted_for)
+                  .store_coins(voted_against)
+                  .store_int(executed, 1)
+                  .store_slice(initiator)
+             .end_cell()
+    );
+}
+
+() init_voting(int query_id, slice request) impure {
+    expiration_date = request~load_uint(48);
+    voting_type = request~load_uint(64);
+    wallet_code = request~load_ref();
+    vote_keeper_code = request~load_ref();
+    proposal = request~load_ref();
+    initiator = request~load_msg_addr();
+    init = true;
+    voted_for = 0;
+    voted_against = 0;
+    executed = false;
+    save_data();
+    ;; TODO should depend on proposal size
+    raw_reserve(min_storage_fee, 0);
+    var msg = begin_cell()
+            .store_msg_flag(msg_flag::bounceable)
+            .store_slice(dao_address)
+            .store_coins(0)
+            .store_msgbody_prefix_slice()
+            .store_op(op::voting_initiated)
+            .store_query_id(query_id)
+            .store_uint(voting_id, 64)
+            .store_uint(expiration_date, 48)
+            .store_slice(initiator);
+    send_raw_message(msg.end_cell(), CARRY_REMAINING_BALANCE | IGNORE_ERRORS);
+}
+
+() main (int balance, int msg_value, cell in_msg_full, slice in_msg_body) {
+    slice cs = in_msg_full.begin_parse();
+    int flags = cs~load_uint(4);
+    if (flags & 1) {
+        return ();
+    }
+    slice sender_address = cs~load_msg_addr();
+    int op = in_msg_body~load_op();
+    int query_id = in_msg_body~load_query_id();
+    if (op == op::init_voting) {
+        load_uninit_data();
+        throw_unless(error::unauthorized_init, equal_slice_bits(sender_address, dao_address));
+        return init_voting(query_id, in_msg_body);
+    } else {
+        load_data();
+    }
+    if (op == op::submit_votes) {
+        slice voter = in_msg_body~load_msg_addr();
+        slice voter_wallet = calc_user_wallet(voter, dao_address, wallet_code, vote_keeper_code);
+        slice vote_keeper = calculate_vote_keeper_address(voter_wallet, my_address(), vote_keeper_code);
+        throw_unless(error::unauthorized_vote,
+                equal_slice_bits(sender_address, vote_keeper));
+        throw_unless(error::voting_already_finished, now() < expiration_date);
+        int submitted_expiration_date = in_msg_body~load_uint(48);
+        throw_unless(error::wrong_expiration_date, submitted_expiration_date >= expiration_date);
+        int weight = in_msg_body~load_coins();
+        int vote = in_msg_body~load_int(1);
+        int need_confirmation = in_msg_body~load_int(1);
+        in_msg_body.end_parse();
+        if (vote) {
+            voted_for += weight;
+        } else {
+            voted_against += weight;
+        }
+        raw_reserve(max(min_storage_fee, balance - msg_value) , 0);
+        builder msg = null();
+        if(need_confirmation) {
+            msg = begin_cell()
+                    .store_msg_flag(msg_flag::bounceable)
+                    .store_slice(dao_address)
+                    .store_coins(0)
+                    .store_msgbody_prefix_slice()
+                    .store_op(op::request_confirm_voting)
+                    .store_query_id(query_id)
+                    .store_uint(voting_id, 64)
+                    .store_slice(voter);
+        } else {
+            msg = begin_cell()
+                .store_msg_flag(msg_flag::non_bounceable)
+                .store_slice(voter)
+                .store_coins(0)
+                .store_msgbody_prefix_slice()
+                .store_op(op::excesses)
+                .store_query_id(query_id);
+        }
+        save_data();
+        return send_raw_message(msg.end_cell(), CARRY_REMAINING_BALANCE | IGNORE_ERRORS);
+    }
+    if(op == op::end_voting) {
+        {-
+          proposal$_ minimal_execution_amount:Coins
+                     message_to_send:^Cell = Proposal;
+        -}
+        slice proposal_data = proposal.begin_parse();
+        int minimal_execution_amount = proposal_data~load_coins();
+        cell message_to_send = proposal_data~load_ref();
+        throw_unless(error::voting_not_finished, now() > expiration_date);
+        throw_if(error::voting_already_executed, executed);
+        throw_unless(error::not_enough_money, msg_value >= minimal_execution_amount);
+        var msg = begin_cell()
+                    .store_msg_flag(msg_flag::non_bounceable)
+                    .store_slice(dao_address)
+                    .store_coins(0)
+                    .store_msgbody_prefix_slice()
+                    .store_op(op::execute_vote_result)
+                    .store_query_id(query_id)
+                    .store_uint(voting_id, 64).store_uint(expiration_date, 48)
+                    .store_coins(voted_for).store_coins(voted_against)
+                    .store_ref(message_to_send);
+        executed = true;
+        save_data();
+        return send_raw_message(proposal, CARRY_REMAINING_GAS);
+    }
+    throw(error::unknown_op);
+}
+
+(int, slice, int, int, int, cell, cell, int, int, int, slice) get_voting_data() method_id {
+    try {
+        load_data();
+    } catch (x, y) {
+        load_uninit_data();
+    }
+    return (init, dao_address, voting_id, expiration_date, voting_type,
+            proposal, wallet_code,
+            voted_for, voted_against,
+            executed, initiator);
+}

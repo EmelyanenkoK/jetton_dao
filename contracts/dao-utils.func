@@ -1,0 +1,59 @@
+#include "jetton-utils.func";
+
+{-
+   uninit$0 jetton_master:MsgAddressInt voting_id:uint64 = Storage;
+-}
+cell pack_uninit_dao_voting_data (slice dao_master, int voting_id) inline {
+    return  begin_cell()
+            .store_int(false, 1)
+            .store_slice(dao_master)
+            .store_uint(voting_id, 64)
+            .end_cell();
+}
+
+{-
+    _ split_depth:(Maybe (## 5)) special:(Maybe TickTock)
+      code:(Maybe ^Cell) data:(Maybe ^Cell)
+      library:(HashmapE 256 SimpleLib) = StateInit;
+-}
+cell calculate_dao_voting_state_init (slice dao_master, int voting_id, cell dao_voting_code) inline {
+    return begin_cell()
+            .store_uint(0,1 + 1) ;; split_depth (Maybe = 0) and special (Maybe = 0)
+            .store_maybe_ref(dao_voting_code)
+            .store_maybe_ref(pack_uninit_dao_voting_data(dao_master, voting_id))
+            .store_uint(0,1) ;; libraries - empty cell
+            .end_cell();
+}
+
+(slice) calculate_dao_voting_address (slice dao_master, int voting_id, cell dao_voting_code) inline {
+    return calc_address(calculate_dao_voting_state_init(dao_master, voting_id, dao_voting_code));
+}
+
+{-
+   vote_keeper voter_wallet:MsgAddressInt voting:MsgAddressInt votes:Coins = State;
+-}
+cell pack_uninit_vote_keeper_data (slice voter_wallet, slice voting) inline {
+    return  begin_cell()
+            .store_slice(voter_wallet)
+            .store_slice(voting)
+            .store_coins(0)
+            .end_cell();
+}
+
+{-
+    _ split_depth:(Maybe (## 5)) special:(Maybe TickTock)
+      code:(Maybe ^Cell) data:(Maybe ^Cell)
+      library:(HashmapE 256 SimpleLib) = StateInit;
+-}
+cell calculate_vote_keeper_state_init (slice voter_wallet, slice voting, cell vote_keeper_code) inline {
+    return begin_cell()
+            .store_uint(0,1 + 1) ;; split_depth (Maybe = 0) and special (Maybe = 0)
+            .store_maybe_ref(vote_keeper_code)
+            .store_maybe_ref(pack_uninit_vote_keeper_data(voter_wallet, voting))
+            .store_uint(0,1) ;; libraries - empty cell
+            .end_cell();
+}
+
+(slice) calculate_vote_keeper_address (slice voter_wallet, slice voting, cell vote_keeper_code) inline {
+    return calc_address(calculate_vote_keeper_state_init(voter_wallet, voting, vote_keeper_code));
+}

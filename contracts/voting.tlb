@@ -1,0 +1,96 @@
+unit$_ = Unit;
+true$_ = True;
+// EMPTY False;
+bool_false$0 = Bool;
+bool_true$1 = Bool;
+bool_false$0 = BoolFalse;
+bool_true$1 = BoolTrue;
+nothing$0 {X:Type} = Maybe X;
+just$1 {X:Type} value:X = Maybe X;
+left$0 {X:Type} {Y:Type} value:X = Either X Y;
+right$1 {X:Type} {Y:Type} value:Y = Either X Y;
+pair$_ {X:Type} {Y:Type} first:X second:Y = Both X Y;
+
+addr_none$00 = MsgAddressExt;
+addr_extern$01 len:(## 9) external_address:(bits len) 
+             = MsgAddressExt;
+anycast_info$_ depth:(#<= 30) { depth >= 1 }
+   rewrite_pfx:(bits depth) = Anycast;
+addr_std$10 anycast:(Maybe Anycast) 
+   workchain_id:int8 address:bits256  = MsgAddressInt;
+addr_var$11 anycast:(Maybe Anycast) addr_len:(## 9) 
+   workchain_id:int32 address:(bits addr_len) = MsgAddressInt;
+_ _:MsgAddressInt = MsgAddress;
+_ _:MsgAddressExt = MsgAddress;
+
+var_uint$_ {n:#} len:(#< n) value:(uint (len * 8))
+         = VarUInteger n;
+var_int$_ {n:#} len:(#< n) value:(int (len * 8)) 
+        = VarInteger n;
+nanograms$_ amount:(VarUInteger 16) = Grams;
+
+_ grams:Grams = Coins;
+
+mint#1674b0a0 query_id:uint64 destination:MsgAddress jetton_amount:Coins forward_ton_amount:Coins total_ton_amount:Coins = InternalMsgBody;
+change_admin#4840664f query_id:uint64 new_admin_address:MsgAddress = InternalMsgBody;
+change_content#5773d1f5 new_content:^Cell = InternalMsgBody;
+upgrade_code#34aea60d query_id:uint64 self_code:(Maybe ^Cell) voting_code:(Maybe ^Cell) = InternalMsgBody;
+
+
+withdraw_tons#6d8e5e3c query_id:uint64 = InternalMsgBody;
+withdraw_jettons#768a50b2 query_id:uint64 wallet:MsgAddressInt amount:Coins = InternalMsgBody;
+
+/*
+Voting scheme:
+    // user gets excesses but no onchain confirmation
+    User -(vote[need_confirmation:false])-> Wallet -(submit_vote)-> VoteKeeper -> Voting -(excesses)-> User
+    // user gets onchain confirmation
+    User -(vote[need_confirmation:true])-> Wallet -(submit_vote)-> VoteKeeper -> Voting -(request_confirm_voting)-> DAO -(confirm_voting)-> Wallet -(vote_confirmation)-> User
+
+Voting creation scheme:
+    // directly through DAO
+    Anybody -(create_voting)-> DAO -(init_voting)-> Voting -(voting_initiated)-> DAO -(voting_created)-> Anybody
+    // through wallet (onchain way, where owner knows wallet, but not the jetton_master)
+    User -(create_voting_with_wallet)-> Wallet -(create_voting)-> DAO -(init_voting)-> Voting -(voting_initiated)-> DAO -(voting_created)-> Wallet -(voting_confirmation)-> User
+*/
+proposal$_ minimal_execution_amount:Coins message_to_send:^Cell = Proposal;
+
+// wallet interface
+// in
+vote#69fb306c query_id:uint64 voting_address:MsgAddressInt expiration_date:uint48 vote:Bool need_confirmation:Bool = InternalMsgBody;
+create_voting_through_wallet#318eff17 query_id:uint64 expiration_date:uint48 proposal:^Proposal = InternalMsgBody;
+confirm_voting#039a374e query_id:uint64 = InternalMsgBody; // DAO -> voter_wallet
+// voting_created ...
+// out
+vote_confirmation#5fe9b8ca query_id:uint64 = InternalMsgBody; //voter_wallet -> voter
+voting_confirmation#2ccba006 query_id:uint64 voting_address:MsgAddressInt = InternalMsgBody;
+
+// DAO interface
+// in
+create_voting#1c7f9a1a query_id:uint64 expiration_date:uint48 proposal:^Proposal = InternalMsgBody;
+execute_vote_result#4f0f7510 query_id:uint64 voting_id:uint64 expiration_date:uint48 voted_for:Coins voted_against:Coins message:^Cell = InternalMsgBody;
+voting_initiated#8e2abb23 query_id:uint64 voting_id:uint64 expiration_date:uint48 initiator:MsgAddressInt = InternalMsgBody; // voting -> DAO
+request_confirm_voting#0222fdcb query_id:uint64 voting_id:uint64 voter:MsgAddressInt  = InternalMsgBody; // Voting -> DAO
+//out
+voting_created#c39f0be6 query_id:uint64 voting_address:MsgAddressInt = InternalMsgBody; // DAO -> voting_initiator
+
+//voting interface
+//in
+init_voting#182d8ddd query_id:uint64 expiration_date:uint48 voting_type:uint64 wallet_code:^Cell vote_controller:^Cell proposal:^Proposal initiator:MsgAddressInt = InternalMsgBody;
+submit_votes#6edb1889 query_id:uint64 voter:MsgAddressInt expiration_date:uint48 weight:Coins vote:Bool need_confirmation:Bool = InternalMsgBody;
+end_voting#66173a45 query_id:uint64 = InternalMsgBody;
+
+//out
+//voting_initiated
+//request_confirm_voting
+//execute_vote_result
+
+//VoteKeeper interface
+//in
+request_vote#2bd63704 query_id:uint64 voter:MsgAddressInt expiration_date:uint48 weight:Coins vote:Bool need_confirmation:Bool = InternalMsgBody;
+//out
+//submit_vote
+
+
+
+

@@ -1,0 +1,73 @@
+#include "stdlib.func";
+#include "error-codes.func";
+#include "op-codes.func";
+#include "messages.func";
+
+{-
+   vote_controller voter_wallet:MsgAddressInt voting:MsgAddressInt votes:Coins = VoteController;
+-}
+(slice, slice, int) load_data() inline {
+    slice cs = get_data().begin_parse();
+    slice voter_wallet = cs~load_msg_addr();
+    slice voting = cs~load_msg_addr();
+    int votes = cs~load_coins();
+    return (voter_wallet, voting, votes);
+}
+() save_data(slice voter_wallet, slice voting, int votes) impure inline {
+    set_data(begin_cell()
+                  .store_slice(voter_wallet)
+                  .store_slice(voting)
+                  .store_coins(votes)
+             .end_cell());
+}
+
+() main (int balance, int msg_value, cell in_msg_full, slice in_msg_body) {
+    slice cs = in_msg_full.begin_parse();
+    int flags = cs~load_uint(4);
+    if (flags & 1) {
+        return ();
+    }
+    slice sender_address = cs~load_msg_addr();
+    int op = in_msg_body~load_uint(32);
+    if (op == op::request_vote) {
+        (slice voter_wallet, slice voting, int votes) = load_data();
+        throw_unless(error::unauthorized_request_vote, equal_slice_bits(voter_wallet, sender_address));
+        ;;request_vote query_id:uint64 voter:MsgAddressInt expiration_date:uint48 weight:Coins
+        ;;             vote:Bool need_confirmation:Bool = InternalMsgBody;
+        int query_id = in_msg_body~load_uint(64);
+        slice voter = in_msg_body~load_msg_addr();
+        int expiration_date = in_msg_body~load_uint(48);
+        int weight = in_msg_body~load_coins();
+        int vote = in_msg_body~load_int(1);
+        int need_confirmation = in_msg_body~load_int(1);
+        int not_yet_voted = weight - votes;
+        throw_unless(error::no_new_votes, not_yet_voted >= 0);
+        ;; it is not clear how to store and authorize expiration_date
+        ;; thus instead of storage_fee exactly for stored time we will use constant fee
+        ;;int storage_fee = muldiv(storage_fee_base,  now() - expiration_date, 65536);
+        int storage_fee = 10000000; ;;0.01 ton
+        raw_reserve(storage_fee, 0);
+        ;; submit_votes query_id:uint64 voter:MsgAddressInt
+        ;;              expiration_date:uint48 weight:Coins
+        ;;              vote:Bool need_confirmation:Bool = InternalMsgBody;
+        save_data(voter_wallet, voting, weight);
+        var msg = begin_cell()
+                .store_msg_flag(msg_flag::non_bounceable)
+                .store_slice(voting)
+                .store_coins(0)
+                .store_msgbody_prefix_slice()
+                .store_op(op::submit_votes)
+                .store_query_id(query_id)
+                .store_slice(voter)
+                .store_uint(expiration_date, 48)
+                .store_coins(not_yet_voted)
+                .store_int(vote, 1)
+                .store_int(need_confirmation, 1);
+        return send_raw_message(msg.end_cell(), CARRY_REMAINING_BALANCE);
+    }
+    throw(error::unknown_op);
+}
+
+(slice, slice, int) get_vote_keeper_data() method_id {
+    return load_data();
+}
