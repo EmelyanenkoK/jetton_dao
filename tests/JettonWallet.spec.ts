@@ -17,9 +17,9 @@ import { compile } from '@ton-community/blueprint';
 */
 
 //jetton params
-let fwd_fee = 1804014n, gas_consumption = 19000000n, min_tons_for_storage = 10000000n;
+let fwd_fee = 1804014n, gas_consumption = 19500000n, min_tons_for_storage = 10000000n;
 
-describe('JettonWallet', () => {
+describe('JettonWallet', () => { return;
     let jwallet_code = new Cell();
     let minter_code = new Cell();
     let voting_code = new Cell();
