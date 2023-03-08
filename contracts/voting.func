@@ -189,7 +189,11 @@ const int min_storage_fee = 30000000;
     throw(error::unknown_op);
 }
 
-(int, slice, int, int, int, cell, cell, int, int, int, slice) get_full_voting_data() method_id {
+(int, int,
+ slice, slice,
+ int, int, int,
+ int, cell, slice,
+ int, int) get_voting_data() method_id {
     try {
         load_data();
     } catch (x, y) {
