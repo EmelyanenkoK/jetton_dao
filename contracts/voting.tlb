@@ -53,7 +53,8 @@ Voting creation scheme:
     // through wallet (onchain way, where owner knows wallet, but not the jetton_master)
     User -(create_voting_with_wallet)-> Wallet -(create_voting)-> DAO -(init_voting)-> Voting -(voting_initiated)-> DAO -(voting_created)-> Wallet -(voting_confirmation)-> User
 */
-proposal$_ minimal_execution_amount:Coins message_to_send:^Cell = Proposal;
+// description is SnailText
+proposal$_ minimal_execution_amount:Coins message_to_send:^Cell description:Cell = Proposal;
 
 // wallet interface
 // in

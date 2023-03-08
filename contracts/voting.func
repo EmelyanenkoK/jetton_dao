@@ -168,7 +168,7 @@ const int min_storage_fee = 30000000;
         -}
         slice proposal_data = proposal.begin_parse();
         int minimal_execution_amount = proposal_data~load_coins();
-        cell message_to_send = proposal_data~load_ref();
+        cell message_to_send = proposal_data~load_maybe_ref();
         throw_unless(error::voting_not_finished, now() > expiration_date);
         throw_if(error::voting_already_executed, executed);
         throw_unless(error::not_enough_money, msg_value >= minimal_execution_amount);
@@ -181,7 +181,7 @@ const int min_storage_fee = 30000000;
                     .store_query_id(query_id)
                     .store_uint(voting_id, 64).store_uint(expiration_date, 48)
                     .store_coins(voted_for).store_coins(voted_against)
-                    .store_ref(message_to_send);
+                    .store_maybe_ref(message_to_send);
         executed = true;
         save_data();
         return send_raw_message(proposal, CARRY_REMAINING_GAS);
@@ -189,7 +189,25 @@ const int min_storage_fee = 30000000;
     throw(error::unknown_op);
 }
 
-(int, slice, int, int, int, cell, cell, int, int, int, slice) get_voting_data() method_id {
+(int, slice, int, int, int, cell, cell, int, int, int, slice) get_full_voting_data() method_id {
+    try {
+        load_data();
+    } catch (x, y) {
+        load_uninit_data();
+    }
+    slice ps = proposal.begin_parse();
+    int minimal_execution_amount = ps~load_coins();
+    cell message = ps~load_maybe_ref();
+    slice description = ps;
+    return (init, executed,
+            dao_address, initiator,
+            voting_id, expiration_date, voting_type,
+            ;; proposal
+            minimal_execution_amount, message, description,
+            voted_for, voted_against);
+}
+
+(int, slice, int, int, int, cell, cell, int, int, int, slice) get_full_voting_data() method_id {
     try {
         load_data();
     } catch (x, y) {
