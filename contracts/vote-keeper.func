@@ -4,20 +4,22 @@
 #include "messages.func";
 
 {-
-   vote_controller voter_wallet:MsgAddressInt voting:MsgAddressInt votes:Coins = VoteController;
+   vote_controller voter_wallet:MsgAddressInt voting:MsgAddressInt votes_for:Coins votes_against:Coins = VoteController;
 -}
-(slice, slice, int) load_data() inline {
+(slice, slice, int, int) load_data() inline {
     slice cs = get_data().begin_parse();
     slice voter_wallet = cs~load_msg_addr();
     slice voting = cs~load_msg_addr();
-    int votes = cs~load_coins();
-    return (voter_wallet, voting, votes);
+    int votes_for = cs~load_coins();
+    int votes_against = cs~load_coins();
+    return (voter_wallet, voting, votes_for, votes_against);
 }
-() save_data(slice voter_wallet, slice voting, int votes) impure inline {
+() save_data(slice voter_wallet, slice voting, int votes_for, int votes_against) impure inline {
     set_data(begin_cell()
                   .store_slice(voter_wallet)
                   .store_slice(voting)
-                  .store_coins(votes)
+                  .store_coins(votes_for)
+                  .store_coins(votes_against)
              .end_cell());
 }
 
@@ -30,7 +32,7 @@
     slice sender_address = cs~load_msg_addr();
     int op = in_msg_body~load_uint(32);
     if (op == op::request_vote) {
-        (slice voter_wallet, slice voting, int votes) = load_data();
+        (slice voter_wallet, slice voting, int votes_for, int votes_against) = load_data();
         throw_unless(error::unauthorized_request_vote, equal_slice_bits(voter_wallet, sender_address));
         ;;request_vote query_id:uint64 voter:MsgAddressInt expiration_date:uint48 weight:Coins
         ;;             vote:Bool need_confirmation:Bool = InternalMsgBody;
@@ -40,7 +42,12 @@
         int weight = in_msg_body~load_coins();
         int vote = in_msg_body~load_int(1);
         int need_confirmation = in_msg_body~load_int(1);
-        int not_yet_voted = weight - votes;
+        int not_yet_voted = weight - votes_for - votes_against;
+        if(vote) {
+            votes_for += not_yet_voted;
+        } else {
+            votes_against += not_yet_voted;
+        }
         throw_unless(error::no_new_votes, not_yet_voted >= 0);
         ;; it is not clear how to store and authorize expiration_date
         ;; thus instead of storage_fee exactly for stored time we will use constant fee
@@ -50,7 +57,7 @@
         ;; submit_votes query_id:uint64 voter:MsgAddressInt
         ;;              expiration_date:uint48 weight:Coins
         ;;              vote:Bool need_confirmation:Bool = InternalMsgBody;
-        save_data(voter_wallet, voting, weight);
+        save_data(voter_wallet, voting, votes_for, votes_against);
         var msg = begin_cell()
                 .store_msg_flag(msg_flag::non_bounceable)
                 .store_slice(voting)
@@ -68,6 +75,6 @@
     throw(error::unknown_op);
 }
 
-(slice, slice, int) get_vote_keeper_data() method_id {
+(slice, slice, int, int) get_vote_keeper_data() method_id {
     return load_data();
 }

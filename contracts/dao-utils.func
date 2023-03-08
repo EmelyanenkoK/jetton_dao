@@ -37,6 +37,7 @@ cell pack_uninit_vote_keeper_data (slice voter_wallet, slice voting) inline {
             .store_slice(voter_wallet)
             .store_slice(voting)
             .store_coins(0)
+            .store_coins(0)
             .end_cell();
 }
 
