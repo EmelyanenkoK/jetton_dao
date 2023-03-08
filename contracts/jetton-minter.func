@@ -47,6 +47,26 @@ const int provide_voting_data_gas_consumption = 20000000;
     );
 }
 
+;; Change this logic to use your own voting rules
+int is_proposal_accepted(int voted_for, int voted_against, int total_votes) inline {
+    {-
+      ;; Simple
+      int threshold = muldiv(total_votes, 1, 2);
+      return voted_for > threshold;
+    -}
+
+      ;; Minimal quorum, only voters count
+      int quorum = (voted_for + voted_against) > (total_votes / 10);
+      return quorum & ( voted_for > voted_against);
+
+    {-
+      ;; Soft majority voting https://forum.everscale.network/t/developers-contest-soft-majority-voting-system-finished/65
+      return voted_for > (muldiv(voted_against, 4, 5) + (total_votes / 10));
+      ;; soft supermajority
+      return voted_for > (voted_against + (total_votes / 3));
+    -}
+}
+
 () mint_tokens(slice to_address, cell jetton_wallet_code, cell vote_keeper_code, int amount, cell master_msg) impure {
     cell state_init = calculate_jetton_wallet_state_init(
                         to_address,
@@ -242,8 +262,7 @@ const int provide_voting_data_gas_consumption = 20000000;
         throw_unless(error::unauthorized_vote_execution, equal_slice_bits(sender_address, voting_address));
         throw_unless(error::voting_not_finished, now() >= expiration_date);
         (int voted_for, int voted_against, cell message) = (in_msg_body~load_coins(), in_msg_body~load_coins(), in_msg_body~load_ref());
-        ;; custom logic, change voting acceptance here
-        if((voted_for > voted_against) & (voted_for > total_supply / 10)) {
+        if(is_proposal_accepted(voted_for, voted_against, total_supply)) {
             send_raw_message(message, CARRY_REMAINING_GAS);
         }
         return ();
