@@ -6,7 +6,7 @@ import { Voting } from '../../wrappers/Voting';
 import { VoteKeeper } from '../../wrappers/VoteKeeper';
 import '@ton-community/test-utils';
 import { compile } from '@ton-community/blueprint';
-import { getRandom, getRandomExp, getRandomInt, getRandomTon, randomAddress, renewExp } from "../utils";
+import { getRandom, getRandomExp, getRandomInt, getRandomPayload, getRandomTon, randomAddress, renewExp } from "../utils";
 
 type voteCtx = {
     init: boolean,
@@ -34,6 +34,7 @@ describe('Votings', () => {
     let voteKeeperContract:(wallet:SandboxContract<JettonWallet>, keeper_addr:Address) => Promise<SandboxContract<VoteKeeper>>;
     let defaultContent:Cell;
     let expirationDate:bigint;
+    let assertKeeper:(vAddr:Address, wallet:SandboxContract<JettonWallet>, votes:bigint) => void;
 
     beforeAll(async () => {
         jwallet_code = await compile('JettonWallet');
@@ -74,6 +75,17 @@ describe('Votings', () => {
             )
         );
 
+        assertKeeper = async (vAddr: Address, wallet:SandboxContract<JettonWallet>, expVotes:bigint) => {
+            const keepR      = await voteKeeperContract(wallet, vAddr);
+            const keeperData = await keepR.getData();
+
+            expect(keeperData.voter_wallet.equals(wallet.address)).toBeTruthy();
+            expect(keeperData.voting.equals(vAddr)).toBeTruthy();
+            expect(keeperData.votes).toEqual(expVotes);
+
+
+   }
+
         await DAO.sendDeploy(user1.getSender(), toNano('1'));
         await DAO.sendMint(user1.getSender(), user1.address, initialUser1Balance, toNano('0.05'), toNano('1'));
         await DAO.sendMint(user1.getSender(), user2.address, initialUser2Balance, toNano('0.05'), toNano('1'));
@@ -84,13 +96,18 @@ describe('Votings', () => {
             const votingId = 0n;
             let voting = await votingContract(votingId);
 
+            const randTon    = getRandomTon(1, 2000);
+            const payload    = getRandomPayload();
+            const minExec    = toNano('0.1');
+
             let createVoting = await DAO.sendCreateVoting(user1.getSender(),
                 expirationDate,
-                toNano('0.1'), // minimal_execution_amount
+                minExec, // minimal_execution_amount
                 randomAddress(),
                 toNano('0.1'), // amount
-                beginCell().endCell() // payload
+                payload // payload
             );
+
             expect(createVoting.transactions).toHaveTransaction({ //notification
                         from: DAO.address,
                         to: user1.address,
@@ -104,8 +121,11 @@ describe('Votings', () => {
 
             votes[0] = votingData;
 
+            const proposal = JettonMinter.createProposalBody(minExec, payload); 
+
             expect(votingData.votingId).toEqual(votingId);
             expect(votingData.daoAddress.equals(DAO.address)).toBeTruthy();
+            expect(votingData.proposal.equals(proposal)).toBeTruthy();
             expect(votingData.executed).toBe(false);
             expect(votingData.expirationDate).toEqual(expirationDate);
             expect(votingData.initiator.equals(user1.address)).toBeTruthy();
@@ -115,11 +135,10 @@ describe('Votings', () => {
     });
 
     it('jetton owner can vote for', async () => {
-            let voting = await votingContract(0n);
+            let voting     = await votingContract(0n);
 
             let votingCode = await DAO.getVotingCode();
             const user1JettonWallet = await userWallet(user1.address);
-            const keepR    = await voteKeeperContract(user1JettonWallet, voting.address)
             const voteCtx  = votes[0];
             let voteResult = await user1JettonWallet.sendVote(user1.getSender(), voting.address, expirationDate, true, false);
             expect(voteResult.transactions).toHaveTransaction({ //notification
@@ -132,11 +151,7 @@ describe('Votings', () => {
 
             voteCtx.votedFor += initialUser1Balance;
 
-            const keeperData = await keepR.getData();
-
-            expect(keeperData.voter_wallet.equals(user1JettonWallet.address)).toBeTruthy();
-            expect(keeperData.voting.equals(voting.address)).toBeTruthy();
-            expect(keeperData.votes).toEqual(voteCtx.votedFor);
+            await assertKeeper(voting.address, user1JettonWallet, voteCtx.votedFor);
 
             const votingData = await voting.getData();
 
@@ -161,6 +176,7 @@ describe('Votings', () => {
             const user3JettonWallet = await userWallet(user3.address);
             const voteRes           = await user3JettonWallet.sendVote(user3.getSender(), voting.address, expirationDate, false, false); 
 
+
             expect(voteRes.transactions).toHaveTransaction({ //notification
                         from: voting.address,
                         to: user3.address,
@@ -170,11 +186,13 @@ describe('Votings', () => {
 
 
             voteCtx.votedAgainst += initialUser3Balance;
+
+            await assertKeeper(voting.address, user3JettonWallet, voteCtx.votedAgainst);
             
             votingData     = await voting.getData();
             expect(votingData.init).toEqual(voteCtx.init);
             expect(votingData.votedFor).toEqual(voteCtx.votedFor);
-            expect(votingData.votedAgainst).toEqual(initialUser3Balance);
+            expect(votingData.votedAgainst).toEqual(voteCtx.votedAgainst);
  
         });
 
@@ -227,10 +245,12 @@ describe('Votings', () => {
                         body: beginCell().storeUint(0xd53276db, 32).storeUint(0, 64).endCell()
                     });
 
-            const votingData = await voting.getData();
-            
             voteCtx.votedAgainst += 1n;
 
+            await assertKeeper(voting.address, user1JettonWallet, voteCtx.votedAgainst);
+
+            const votingData = await voting.getData();
+            
             expect(votingData.init).toEqual(voteCtx.init);
             expect(votingData.votedFor).toEqual(voteCtx.votedFor);
             expect(votingData.votedAgainst).toEqual(voteCtx.votedAgainst);
@@ -269,6 +289,7 @@ describe('Votings', () => {
 
 
             const user1JettonWallet = await userWallet(user1.address);
+            const walletBalance     = await user1JettonWallet.getJettonBalance();
             let voteResult = await user1JettonWallet.sendVote(user1.getSender(), voting.address, expirationDate, true, false);
 
             expect(voteResult.transactions).toHaveTransaction({ //notification
@@ -278,7 +299,9 @@ describe('Votings', () => {
                         body: beginCell().storeUint(0xd53276db, 32).storeUint(0, 64).endCell()
                     });
 
-            voteCtx.votedFor += initialUser1Balance + 1n;
+            voteCtx.votedFor += walletBalance;
+
+            await assertKeeper(voting.address, user1JettonWallet, voteCtx.votedFor);
 
             votingData = await voting.getData();
 
@@ -303,6 +326,8 @@ describe('Votings', () => {
 
             let votingCode = await DAO.getVotingCode();
             const user1JettonWallet = await userWallet(user1.address);
+            const walletBalance     = await user1JettonWallet.getJettonBalance();
+
             let voteResult = await user1JettonWallet.sendVote(user1.getSender(), voting.address, expirationDate, false, true);
             expect(voteResult.transactions).toHaveTransaction({ //vote_confirmation
                         from: user1JettonWallet.address,
@@ -310,7 +335,10 @@ describe('Votings', () => {
                         body: beginCell().storeUint(0x5fe9b8ca, 32).storeUint(0, 64).endCell()
                     });
 
-            voteCtx.votedAgainst += initialUser1Balance + 1n;
+            voteCtx.votedAgainst += walletBalance;
+
+
+            await assertKeeper(voting.address, user1JettonWallet, voteCtx.votedFor);
 
             let votingData = await voting.getData();
 
