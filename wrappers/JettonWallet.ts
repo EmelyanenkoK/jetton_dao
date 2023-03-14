@@ -37,9 +37,9 @@ export class JettonWallet implements Contract {
     }
     static transferMessage(jetton_amount: bigint, to: Address,
                            responseAddress:Address,
-                           customPayload: Cell,
+                           customPayload: Cell | null,
                            forward_ton_amount: bigint,
-                           forwardPayload: Cell) {
+                           forwardPayload: Cell | null) {
         return beginCell().storeUint(0xf8a7ea5, 32).storeUint(0, 64) // op, queryId
                           .storeCoins(jetton_amount).storeAddress(to)
                           .storeAddress(responseAddress)
@@ -52,9 +52,9 @@ export class JettonWallet implements Contract {
                               value: bigint,
                               jetton_amount: bigint, to: Address,
                               responseAddress:Address,
-                              customPayload: Cell,
+                              customPayload: Cell | null,
                               forward_ton_amount: bigint,
-                              forwardPayload: Cell) {
+                              forwardPayload: Cell | null) {
         await provider.internal(via, {
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             body: JettonWallet.transferMessage(jetton_amount, to, responseAddress, customPayload, forward_ton_amount, forwardPayload),
@@ -150,8 +150,8 @@ export class JettonWallet implements Contract {
         let res = await provider.get('get_voted_weight', [{ type: 'int', value: voting_id}, { type: 'int', value: expiration_date}]);
         return res.stack.readBigNumber();
     }
-    async getVoteControllerAddress(provider: ContractProvider, voting_address:Address): Promise<Address> {
-        const res = await provider.get('get_vote_controller_address', [{ type: 'slice', cell: beginCell().storeAddress(voting_address).endCell() }])
+    async getVoteKeeperAddress(provider: ContractProvider, voting_address:Address): Promise<Address> {
+        const res = await provider.get('get_vote_keeper_address', [{ type: 'slice', cell: beginCell().storeAddress(voting_address).endCell() }])
         return res.stack.readAddress()
     }
 }
