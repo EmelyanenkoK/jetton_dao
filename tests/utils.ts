@@ -1,5 +1,6 @@
 
 import { Address, toNano, fromNano } from "ton";
+import {Cell, beginCell } from "ton-core";
 
 export const randomAddress = (wc: number = 0) => {
     const buf = Buffer.alloc(32);
@@ -41,4 +42,8 @@ export const getRandomExp = () => {
 
 export const renewExp = (cur:bigint) => {
     return Math.floor(Date.now() / 1000) >= cur ? getRandomExp() : cur;
+}
+
+export const getRandomPayload = (): Cell => {
+    return beginCell().storeCoins(getRandomTon(1, 2000)).endCell();
 }
