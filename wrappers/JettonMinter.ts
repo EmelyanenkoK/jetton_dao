@@ -92,13 +92,18 @@ export class JettonMinter implements Contract {
         });
     }
 
+    static createProposalBody(minimal_execution_amount:bigint, forwardMsg:Cell) {
+
+        return beginCell().storeCoins(minimal_execution_amount).storeRef(forwardMsg).endCell();
+    }
+
     static createVotingMessage(expiration_date: bigint,
                                minimal_execution_amount:bigint,
                                destination: Address, amount:bigint, payload:Cell) {
         let forwardMsgBuilder = beginCell();
         //storeMessageRelaxed(internal({to:destination, value:amount, body:payload}))(forwardMsgBuilder);
         let forwardMsg = forwardMsgBuilder.endCell();
-        let proposal = beginCell().storeCoins(minimal_execution_amount).storeRef(forwardMsg).endCell();
+        let proposal   = JettonMinter.createProposalBody(minimal_execution_amount, payload);
         return beginCell().storeUint(0x1c7f9a1a, 32).storeUint(0, 64) // op, queryId
                           .storeUint(expiration_date, 48)
                           .storeRef(proposal)
