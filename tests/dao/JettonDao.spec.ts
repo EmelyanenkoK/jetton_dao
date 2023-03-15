@@ -210,11 +210,12 @@ describe('Votings', () => {
 
         it('jetton owner can transfer tokens which did not vote', async () => {
             const user2JettonWallet = await userWallet(user2.address);
+            const transferVal = getRandomTon(2, 10);
             await user2JettonWallet.sendTransfer(user2.getSender(), toNano('0.15'), //tons
-                   2n, user1.address,
+                   transferVal, user1.address,
                    user1.address, null, toNano('0.05'), null);
             const user1JettonWallet = await userWallet(user1.address);
-            expect(await user1JettonWallet.getJettonBalance()).toEqual(2n);
+            expect(await user1JettonWallet.getJettonBalance()).toEqual(transferVal);
             let transferResult = await user1JettonWallet.sendTransfer(user1.getSender(), toNano('0.15'), //tons
                    1n, user2.address,
                    user1.address, null, toNano('0.05'), null);
@@ -229,7 +230,7 @@ describe('Votings', () => {
                         // excesses 0xd53276db, query_id
                         body: beginCell().storeUint(0xd53276db, 32).storeUint(0, 64).endCell()
                     });
-            expect(await user1JettonWallet.getJettonBalance()).toEqual(1n);
+            expect(await user1JettonWallet.getJettonBalance()).toEqual(transferVal - 1n);
         });
 
         it('jetton owner can vote second time but only with new jettons', async () => {
@@ -237,6 +238,7 @@ describe('Votings', () => {
             const voteCtx  = votes[0];
             let votingCode = await DAO.getVotingCode();
             const user1JettonWallet = await userWallet(user1.address);
+            const walletData = await user1JettonWallet.getDaoData();
             let voteResult = await user1JettonWallet.sendVote(user1.getSender(), voting.address, expirationDate, false, false);
             expect(voteResult.transactions).toHaveTransaction({ //notification
                         from: voting.address,
@@ -245,9 +247,9 @@ describe('Votings', () => {
                         body: beginCell().storeUint(0xd53276db, 32).storeUint(0, 64).endCell()
                     });
 
-            voteCtx.votedAgainst += 1n;
+            voteCtx.votedAgainst += walletData.balance;
 
-            await assertKeeper(voting.address, user1JettonWallet, voteCtx.votedAgainst);
+            await assertKeeper(voting.address, user1JettonWallet, walletData.balance + walletData.locked);
 
             const votingData = await voting.getData();
             
@@ -289,7 +291,7 @@ describe('Votings', () => {
 
 
             const user1JettonWallet = await userWallet(user1.address);
-            const walletBalance     = await user1JettonWallet.getJettonBalance();
+            const walletBalance     = await user1JettonWallet.getLockedBalance();
             let voteResult = await user1JettonWallet.sendVote(user1.getSender(), voting.address, expirationDate, true, false);
 
             expect(voteResult.transactions).toHaveTransaction({ //notification
@@ -326,7 +328,7 @@ describe('Votings', () => {
 
             let votingCode = await DAO.getVotingCode();
             const user1JettonWallet = await userWallet(user1.address);
-            const walletBalance     = await user1JettonWallet.getJettonBalance();
+            const walletBalance     = await user1JettonWallet.getTotalBalance();
 
             let voteResult = await user1JettonWallet.sendVote(user1.getSender(), voting.address, expirationDate, false, true);
             expect(voteResult.transactions).toHaveTransaction({ //vote_confirmation
@@ -338,7 +340,7 @@ describe('Votings', () => {
             voteCtx.votedAgainst += walletBalance;
 
 
-            await assertKeeper(voting.address, user1JettonWallet, voteCtx.votedFor);
+            await assertKeeper(voting.address, user1JettonWallet, voteCtx.votedAgainst);
 
             let votingData = await voting.getData();
 
@@ -355,8 +357,9 @@ describe('Votings', () => {
             // await new Promise(res => setTimeout(res, Number((expirationDate + 1n) * 1000n) - Date.now()));
             // expect(await user1JettonWallet.getJettonBalance({now: expirationDate + 1n})).toEqual(initialUser1Balance + 1n);
 
+            const totalBalance = await user1JettonWallet.getTotalBalance();
             const wdata = await blockchain.runGetMethod(user1JettonWallet.address, 'get_wallet_data', [], {now: Number(expirationDate) + 1 });
-            expect(wdata.stackReader.readBigNumber()).toBe(initialUser1Balance + 1n);
+            expect(wdata.stackReader.readBigNumber()).toEqual(totalBalance);
             // check that voting data didn't changed
             let voting     = await votingContract(0n);
             let votingData = await voting.getData();
