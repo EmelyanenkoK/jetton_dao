@@ -1,6 +1,19 @@
-import { Address, beginCell, Cell, Contract, contractAddress, ContractProvider, Sender, SendMode, toNano } from 'ton-core';
+import { Address, beginCell, Cell, Contract, contractAddress, ContractProvider, Sender, SendMode, toNano, TupleReader } from 'ton-core';
 
 export type JettonWalletConfig = {};
+
+export type JettonData = {
+    balance: bigint,
+    ownerAddress: Address,
+    masterAdderss: Address,
+    walletCode: Cell,
+};
+
+export type DaoData = JettonData & {
+   locked: bigint,
+   lockExpiration: number,
+   voteKeeperCode: Cell
+}
 
 export function jettonWalletConfigToCell(config: JettonWalletConfig): Cell {
     return beginCell().endCell();
@@ -153,5 +166,39 @@ export class JettonWallet implements Contract {
     async getVoteKeeperAddress(provider: ContractProvider, voting_address:Address): Promise<Address> {
         const res = await provider.get('get_vote_keeper_address', [{ type: 'slice', cell: beginCell().storeAddress(voting_address).endCell() }])
         return res.stack.readAddress()
+    }
+
+    private unpackJettonData(stack:TupleReader): JettonData {
+        return {
+            balance: stack.readBigNumber(),
+            ownerAddress: stack.readAddress(),
+            masterAdderss: stack.readAddress(),
+            walletCode: stack.readCell(),
+        };
+    } 
+
+    async getJettonData(provider: ContractProvider): Promise<JettonData> {
+        const res = await provider.get('get_wallet_data', []);
+        return this.unpackJettonData(res.stack);
+    }
+
+    async getDaoData(provider: ContractProvider): Promise<DaoData> {
+        const res = await provider.get('get_dao_wallet_data', []);
+        return {
+            ...this.unpackJettonData(res.stack),
+            locked: res.stack.readBigNumber(),
+            lockExpiration: res.stack.readNumber(),
+            voteKeeperCode: res.stack.readCell()
+        };
+    }
+
+    async getLockedBalance(provider: ContractProvider): Promise<bigint> {
+        return (await this.getDaoData(provider)).locked;
+    }
+
+    async getTotalBalance(provider: ContractProvider): Promise<bigint> {
+        const res = await this.getDaoData(provider);
+
+        return res.locked + res.balance;
     }
 }
