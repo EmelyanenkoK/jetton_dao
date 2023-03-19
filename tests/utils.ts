@@ -36,12 +36,12 @@ export const getRandomTon = (min:number, max:number): bigint => {
     return toNano(getRandom(min, max).toFixed(9));
 }
 
-export const getRandomExp = () => {
-    return BigInt(Math.floor(Date.now() / 1000) + getRandomInt(10, 100));
+export const getRandomExp = (from:number = Math.floor(Date.now() / 1000)) => {
+    return BigInt(from + getRandomInt(10, 12));
 }
 
 export const renewExp = (cur:bigint) => {
-    return Math.floor(Date.now() / 1000) >= cur ? getRandomExp() : cur;
+    return Math.floor(Date.now() / 1000) >= cur ? getRandomExp(Number(cur)) : cur;
 }
 
 export const getRandomPayload = (): Cell => {
