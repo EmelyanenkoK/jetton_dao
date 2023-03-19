@@ -41,4 +41,16 @@ export class Voting implements Contract {
         };
     }
 
+    static endVotingMessage() {
+        return beginCell().storeUint(0x66173a45, 32).storeUint(0, 64).endCell();
+    }
+
+    async sendEndVoting(provider: ContractProvider, via: Sender, value: bigint) {
+        await provider.internal(via, {
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            body: Voting.endVotingMessage(),
+            value
+        });
+    }
+
 }
