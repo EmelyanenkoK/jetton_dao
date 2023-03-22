@@ -7,6 +7,7 @@ import { VoteKeeper } from '../../wrappers/VoteKeeper';
 import '@ton-community/test-utils';
 import { compile } from '@ton-community/blueprint';
 import { getRandom, getRandomExp, getRandomInt, getRandomPayload, getRandomTon, randomAddress, renewExp } from "../utils";
+import { BlockList } from 'net';
 
 type voteCtx = {
     init: boolean,
@@ -734,9 +735,108 @@ describe('Votings', () => {
             });
 
             votes[Number(votingId)] = voteData;
-
-
         })
+
+        it('Execute vote result should only allow voting address', async() => {
+
+            expirationDate = getRandomExp(blockchain.now);
+
+            const payload  = getRandomPayload();
+            const winMsg   = genMessage(user1.address, toNano('0.05'), payload);
+
+            const supply   = await DAO.getTotalSupply();
+
+            const voting       = await votingContract(votingId);
+            const votingSender = blockchain.sender(voting.address);
+
+            blockchain.now = Number(expirationDate) + 1;
+
+            let res = await DAO.sendExecuteVotingMessage(user1.getSender(),
+                                                         votingId,
+                                                         expirationDate,
+                                                         supply,
+                                                         0n,
+                                                         winMsg);
+
+            const proposalTrans = {
+                from: DAO.address,
+                to: user1.address,
+                body: payload
+            };
+
+            expect(res.transactions).toHaveTransaction({
+                from: user1.address,
+                to: DAO.address,
+                success: false,
+                exitCode: 78
+            });
+
+            expect(res.transactions).not.toHaveTransaction(proposalTrans);
+
+            res = await DAO.sendExecuteVotingMessage(votingSender,
+                                                     votingId,
+                                                     expirationDate,
+                                                     supply,
+                                                     0n,
+                                                     winMsg);
+            // console.log(res.transactions[1].description);
+            expect(res.transactions).toHaveTransaction({
+                from: voting.address,
+                to: DAO.address,
+                success: true
+            });
+
+            expect(res.transactions).toHaveTransaction(proposalTrans);
+        });
+
+        it('Vote should not execute before expiery', async () => {
+
+            expirationDate = getRandomExp(blockchain.now);
+
+            const payload  = getRandomPayload();
+            const winMsg   = genMessage(user1.address, toNano('0.05'), payload);
+            const supply   = await DAO.getTotalSupply();
+            const voting   = await votingContract(votingId);
+            const votingSender = blockchain.sender(voting.address);
+
+            let res = await DAO.sendExecuteVotingMessage(votingSender,
+                                                         votingId,
+                                                         expirationDate,
+                                                         supply,
+                                                         0n,
+                                                         winMsg);
+
+            const proposalTrans = {
+                from: DAO.address,
+                to: user1.address,
+                body: payload
+            };
+
+            expect(res.transactions).toHaveTransaction({
+                from: voting.address,
+                to: DAO.address,
+                success: false,
+                exitCode: 0xf6
+            });
+
+            expect(res.transactions).not.toHaveTransaction(proposalTrans);
+
+            blockchain.now = Number(expirationDate) + 1;
+
+            res = await DAO.sendExecuteVotingMessage(votingSender,
+                                                     votingId,
+                                                     expirationDate,
+                                                     supply,
+                                                     0n,
+                                                     winMsg);
+            expect(res.transactions).toHaveTransaction({
+                from: voting.address,
+                to: DAO.address,
+                success: true
+            });
+
+            expect(res.transactions).toHaveTransaction(proposalTrans);
+        });
 
 
 
