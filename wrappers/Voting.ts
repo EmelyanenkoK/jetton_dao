@@ -41,8 +41,8 @@ export class Voting implements Contract {
         };
     }
 
-    static endVotingMessage() {
-        return beginCell().storeUint(0x66173a45, 32).storeUint(0, 64).endCell();
+    static endVotingMessage(query_id:bigint = 0n) {
+        return beginCell().storeUint(0x66173a45, 32).storeUint(query_id, 64).endCell();
     }
 
     async sendEndVoting(provider: ContractProvider, via: Sender, value: bigint) {
