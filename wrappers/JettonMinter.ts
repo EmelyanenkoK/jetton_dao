@@ -157,6 +157,31 @@ export class JettonMinter implements Contract {
 
     }
 
+    static createVotingInitiated(voting_id:bigint, expiration_date:bigint, initiator:Address, query_id:bigint = 0n){
+        return beginCell().storeUint(0x8e2abb23, 32)
+                          .storeUint(query_id, 64)
+                          .storeUint(voting_id, 64)
+                          .storeUint(expiration_date, 48)
+                          .storeAddress(initiator)
+               .endCell();
+
+    }
+
+    async sendVotingInitiated(provider: ContractProvider,
+                                    via: Sender,
+                                    voting_id: bigint,
+                                    expiration_date: bigint,
+                                    initiator:Address,
+                                    value:bigint=toNano('0.1')) {
+        await provider.internal(via, {
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            body: JettonMinter.createVotingInitiated(voting_id, expiration_date, initiator),
+            value
+        });
+    }
+
+
+
     async getWalletAddress(provider: ContractProvider, owner: Address): Promise<Address> {
         const res = await provider.get('get_wallet_address', [{ type: 'slice', cell: beginCell().storeAddress(owner).endCell() }])
         return res.stack.readAddress()
