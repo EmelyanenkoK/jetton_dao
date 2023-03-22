@@ -1,5 +1,5 @@
 import { Blockchain, SandboxContract, TreasuryContract, Verbosity, internal } from '@ton-community/sandbox';
-import { Cell, toNano, beginCell, Address, SendMode, OpenedContract } from 'ton-core';
+import { Cell, toNano, beginCell, storeMessageRelaxed, Address, SendMode, OpenedContract, AccountStorage } from 'ton-core';
 import { JettonWallet } from '../../wrappers/JettonWallet';
 import { JettonMinter } from '../../wrappers/JettonMinter';
 import { Voting } from '../../wrappers/Voting';
@@ -17,11 +17,24 @@ type voteCtx = {
 type ActiveWallet       = SandboxContract<TreasuryContract>;
 type ActiveJettonWallet = SandboxContract<JettonWallet>;
 
-type balanceSortResult  = {
+type sortBalanceResult  = {
     min: ActiveJettonWallet,
     max: ActiveJettonWallet,
+    maxBalance: bigint,
+    minBalance: bigint,
     isEq: boolean,
     hasZero: boolean
+};
+
+type walletDesc = {
+    user:   ActiveWallet,
+    jetton: ActiveJettonWallet,
+    balance:bigint
+}
+
+type pickWinnerResult = {
+    winner: walletDesc,
+    loser:  walletDesc
 };
 
 
@@ -39,7 +52,9 @@ describe('Votings', () => {
     let initialUser2Balance:bigint;
     let initialUser3Balance:bigint;
     let votes:voteCtx[] = []; // Array index is voting index
-    let sortBalance:(w1:ActiveJettonWallet, w2:ActiveJettonWallet) => Promise<balanceSortResult>;
+    let genMessage:(to:Address, value:bigint, body:Cell) => Cell;
+    let sortBalance:(w1:ActiveJettonWallet, w2:ActiveJettonWallet) => Promise<sortBalanceResult>;
+    let pickWinner:(u1:ActiveWallet, u2:ActiveWallet) => Promise<pickWinnerResult>;
     let DAO:SandboxContract<JettonMinter>;
     let userWallet:(address:Address) => Promise<ActiveJettonWallet>;
     let votingContract:(voting_id:bigint) => Promise<SandboxContract<Voting>>;
@@ -90,12 +105,14 @@ describe('Votings', () => {
         sortBalance = async (w1:ActiveJettonWallet, w2:ActiveJettonWallet) => {
             const balance1 = await w1.getJettonBalance();
             const balance2 = await w2.getJettonBalance();
-            let sortRes:balanceSortResult;
+            let sortRes:sortBalanceResult;
 
             if(balance1 >= balance2) {
                 sortRes = {
                     min: w2,
                     max: w1,
+                    maxBalance: balance1,
+                    minBalance: balance2,
                     isEq: balance1 == balance2,
                     hasZero: balance2 == 0n
                 };
@@ -104,12 +121,103 @@ describe('Votings', () => {
                 sortRes = {
                     min: w1,
                     max: w2,
+                    maxBalance: balance2,
+                    minBalance: balance1,
                     isEq: false,
                     hasZero: balance1 == 0n
                 };
             }
 
             return sortRes;
+        };
+
+        genMessage = (to:Address, value:bigint, body:Cell) => {
+            return beginCell().store(storeMessageRelaxed(
+                {
+                    info: {
+                        type: "internal",
+                        bounce: true,
+                        bounced: false,
+                        ihrDisabled: true,
+                        dest: to,
+                        value: {coins: value},
+                        ihrFee: 0n,
+                        forwardFee: 0n,
+                        createdLt: 0n,
+                        createdAt:0
+                    },
+                    body
+                    
+                }
+            )).endCell();
+
+        };
+
+        pickWinner = async (u1: ActiveWallet, u2: ActiveWallet) => {
+            const w1 = await userWallet(u1.address);
+            const w2 = await userWallet(u2.address);
+            let comp = await sortBalance(w1, w2);
+
+            let res: pickWinnerResult;
+            let winner: ActiveWallet;
+            let loser: ActiveWallet;
+
+        
+           if(comp.max == w1) {
+                winner = u1;
+                loser  = u2;
+           }
+           else {
+                winner = u2;
+                loser  = u1;
+           }
+
+
+            const mintAmount = comp.isEq || comp.hasZero
+                             ? getRandomTon(1, 10)
+                             : 0n;
+            /*
+             * Now, since we have to carry state across all tests
+             * we need to make sure that
+             * 1) Balance of those jetton wallets differ
+             * 2) None of those is 0
+             * Otherwise can't vote successfully
+             */
+            // Meh
+
+            if(comp.isEq) {
+                // Topup the largest so balance is not equal
+                await DAO.sendMint(user1.getSender(),
+                                   winner.address,
+                                   mintAmount,
+                                   toNano('0.05'),
+                                   toNano('1'));
+                comp.maxBalance += mintAmount;
+            }
+            if(comp.hasZero) {
+                // Topup lowest in case it's zero
+                await DAO.sendMint(user1.getSender(),
+                                   loser.address,
+                                   mintAmount - 1n, // Make sure both have different balances
+                                   toNano('0.05'),
+                                   toNano('1'));
+
+                comp.minBalance += mintAmount - 1n;
+           }
+
+           return {
+               winner: {
+                   user: winner,
+                   jetton: comp.max,
+                   balance: comp.maxBalance
+               },
+               loser: {
+                   user: loser,
+                   jetton: comp.min,
+                   balance: comp.minBalance
+               }
+           };
+
         };
 
         assertKeeper = async (vAddr: Address, wallet:ActiveJettonWallet, expVotes:bigint) => {
@@ -388,7 +496,7 @@ describe('Votings', () => {
             expect(await user1JettonWallet.getJettonBalance()).toEqual(0n);
         });
 
-        it.skip('jetton balance unblocked after expiration date', async () => {
+        it('jetton balance unblocked after expiration date', async () => {
             const user1JettonWallet = await userWallet(user1.address);
             let   daoData           = await user1JettonWallet.getDaoData();
 
@@ -396,7 +504,7 @@ describe('Votings', () => {
 
             const totalBalance      = daoData.balance + daoData.locked;
 
-            // blockchain.now = Number(expirationDate + 1n);
+            blockchain.now = Number(expirationDate + 1n);
 
             // await new Promise(res => setTimeout(res, Number((expirationDate + 1n) * 1000n) - Date.now()));
             // expect(await user1JettonWallet.getJettonBalance()).toEqual(totalBalance);
@@ -419,22 +527,23 @@ describe('Votings', () => {
         it('Vote won', async () => {
 
             let winner:ActiveWallet;
-            let losser:ActiveWallet;
+            let loser:ActiveWallet;
 
-            const expNumber  = Number(expirationDate);
-            expirationDate   = getRandomExp();
+            expirationDate = getRandomExp(blockchain.now);
 
-            const payload    = getRandomPayload();
-            const execAmount = toNano('1.1');
+            const payload  = getRandomPayload();
+            const winMsg   = genMessage(user1.address, toNano('0.05'), payload);
 
-            let voting = await votingContract(3n);
+            const votingId   = 3n;
+
+            let voting = await votingContract(votingId);
 
             const votingRes = await DAO.sendCreateVoting(user1.getSender(),
                 expirationDate,
                 toNano('0.1'), // minimal_execution_amount
                 randomAddress(),
                 toNano('0.5'), // amount
-                payload // payload
+                winMsg // payload
             );
 
             expect(votingRes.transactions).toHaveTransaction({ //notification
@@ -446,76 +555,130 @@ describe('Votings', () => {
                                          .endCell()
             });
 
-            const user1JettonWallet = await userWallet(user1.address);
-            const user2JettonWallet = await userWallet(user2.address);
+            const comp = await pickWinner(user1, user2);
 
-            const comp = await sortBalance(user1JettonWallet, user2JettonWallet);
+            await comp.winner.jetton.sendVote(comp.winner.user.getSender(),
+                                              voting.address,
+                                              expirationDate, true, false);
 
-            // Meh
-            if(comp.max == user1JettonWallet) {
-                winner = user1;
-                losser = user2;
-            }
-            else {
-                winner = user2;
-                losser = user1;
-            }
+            await comp.loser.jetton.sendVote(comp.loser.user.getSender(),
+                                             voting.address,
+                                             expirationDate, false, false);
 
+            blockchain.now = Number(expirationDate) + 1;
+            // await new Promise(res => setTimeout(res, Number(td * 1000n)));
 
-            const mintAmount = comp.isEq || comp.hasZero
-                             ? getRandomTon(1, 10)
-                             : 0n;
+            let voteData = await voting.getData();
+            expect(voteData.executed).toBe(false);
 
-            if(comp.isEq) {
-                // Topup the largest so balance is not equal
-                await DAO.sendMint(user1.getSender(),
-                                   winner.address,
-                                   mintAmount,
-                                   toNano('0.05'),
-                                   toNano('1'));
-            }
-            if(comp.hasZero) {
-                // Topup lowest in case it's zero
-                    await DAO.sendMint(user1.getSender(),
-                                       losser.address,
-                                       mintAmount - 1n, // Make sure both have different balances
-                                       toNano('0.05'),
-                                       toNano('1'));
+            const res = await voting.sendEndVoting(user1.getSender(), toNano('1'));
 
-           }
+            expect(res.transactions).toHaveTransaction({
+                from: voting.address,
+                to: DAO.address,
+                body: JettonMinter.createExecuteVotingMessage(votingId,
+                                                              expirationDate,
+                                                              voteData.votedFor,
+                                                              voteData.votedAgainst,
+                                                              winMsg)
+            });
 
-           await comp.max.sendVote(winner.getSender(),
-                                   voting.address,
-                                   expirationDate, true, false);
+            voteData = await voting.getData();
+            expect(voteData.executed).toBe(true);
 
-           await comp.max.sendVote(losser.getSender(),
-                                   voting.address,
-                                   expirationDate, false, false);
+            // Expect winMsg to be sent from DAO
+            expect(res.transactions).toHaveTransaction({
+                from: DAO.address,
+                to: user1.address,
+                body: payload
+            });
 
-           blockchain.now = Number(expirationDate) + 1;
-           // await new Promise(res => setTimeout(res, Number(td * 1000n)));
-
-           let voteData = await voting.getData();
-           expect(voteData.executed).toBe(false);
-
-           const res = await voting.sendEndVoting(user1.getSender(), execAmount);
-
-           expect(res.transactions).toHaveTransaction({
-               from: voting.address,
-               to: DAO.address,
-               body: beginCell().storeUint(0x4f0f7510, 32)
-                                .storeUint(0, 64)
-                                .storeUint(3, 64)
-                                .storeUint(expirationDate, 48)
-                                .storeCoins(voteData.votedFor)
-                                .storeCoins(voteData.votedAgainst)
-                                .storeRef(payload)
-                                .endCell()
-           });
-
-           voteData = await voting.getData();
-           expect(voteData.executed).toBe(true);
+            votes[Number(votingId)] = voteData;
         })
+
+        it('Vote lost', async () => {
+
+            let winner:ActiveWallet;
+            let loser:ActiveWallet;
+
+            expirationDate   = getRandomExp(blockchain.now);
+
+
+            const payload  = getRandomPayload();
+            const winMsg   = genMessage(user1.address, toNano('0.05'), payload);
+
+
+
+            const votingId   = 4n;
+
+            let voting = await votingContract(votingId);
+
+            const votingRes = await DAO.sendCreateVoting(user1.getSender(),
+                expirationDate,
+                toNano('0.1'), // minimal_execution_amount
+                randomAddress(),
+                toNano('0.5'), // amount
+                winMsg// payload
+            );
+
+            expect(votingRes.transactions).toHaveTransaction({ //notification
+                        from: DAO.address,
+                        to: user1.address,
+                        body: beginCell().storeUint(0xc39f0be6, 32) //// voting created
+                                         .storeUint(0, 64) //query_id
+                                         .storeAddress(voting.address) //voting_code
+                                         .endCell()
+            });
+
+            const comp = await pickWinner(user1, user2);
+
+            // Now winner votes against
+            await comp.winner.jetton.sendVote(comp.winner.user.getSender(),
+                                              voting.address,
+                                              expirationDate, false, false);
+
+            await comp.loser.jetton.sendVote(comp.loser.user.getSender(),
+                                             voting.address,
+                                             expirationDate, true, false);
+
+            blockchain.now = Number(expirationDate) + 1;
+            // await new Promise(res => setTimeout(res, Number(td * 1000n)));
+
+            let voteData = await voting.getData();
+            expect(voteData.executed).toBe(false);
+
+            const res = await voting.sendEndVoting(user1.getSender(), toNano('1'));
+
+            expect(res.transactions).toHaveTransaction({
+                from: voting.address,
+                to: DAO.address,
+                success: true,
+                body: JettonMinter.createExecuteVotingMessage(votingId,
+                                                              expirationDate,
+                                                              voteData.votedFor,
+                                                              voteData.votedAgainst,
+                                                              winMsg
+                                                             )
+            });
+
+            voteData = await voting.getData();
+
+            expect(voteData.executed).toBe(true);
+
+            // No proposal message from DAO
+            expect(res.transactions).not.toHaveTransaction({
+                from: DAO.address,
+                to: user1.address,
+                body: payload,
+                success: true
+            });
+
+            votes[Number(votingId)] = voteData;
+
+
+        })
+
+
 
         // TODO
         // check voteKeeper data in tests
