@@ -62,6 +62,7 @@ describe('Votings', () => {
     let defaultContent:Cell;
     let expirationDate:bigint;
     let assertKeeper:(vAddr:Address, wallet:ActiveJettonWallet, votes:bigint) => void;
+    let votingId:bigint;
 
     beforeAll(async () => {
         jwallet_code = await compile('JettonWallet');
@@ -76,6 +77,7 @@ describe('Votings', () => {
         initialUser2Balance = getRandomTon(100, 1000);
         initialUser3Balance = getRandomTon(100, 1000);
         defaultContent = beginCell().endCell();
+        votingId = 0n;
         DAO = blockchain.openContract(
                    await JettonMinter.createFromConfig(
                      {
@@ -238,7 +240,6 @@ describe('Votings', () => {
     });
     it('should create new voting', async () => {
             expirationDate = getRandomExp();
-            const votingId = 0n;
             let voting = await votingContract(votingId);
 
             const randTon    = getRandomTon(1, 2000);
@@ -295,7 +296,6 @@ describe('Votings', () => {
     });
 
     it('Should not allow voting initiated message from non-voting', async () =>{
-        const votingId = 0n;
         const voting   = await votingContract(votingId);
 
         let   res = await DAO.sendVotingInitiated(user1.getSender(),
@@ -347,7 +347,7 @@ describe('Votings', () => {
     });
 
     it('jetton owner can vote for', async () => {
-            let voting     = await votingContract(0n);
+            let voting     = await votingContract(votingId);
 
             let votingCode = await DAO.getVotingCode();
             const user1JettonWallet = await userWallet(user1.address);
@@ -377,7 +377,7 @@ describe('Votings', () => {
 
         it('jetton owner can vote against', async () => {
 
-            let voting     = await votingContract(0n);
+            let voting     = await votingContract(votingId);
             let votingData = await voting.getData();
             let voteCtx    = votes[0];
 
@@ -446,7 +446,7 @@ describe('Votings', () => {
         });
 
         it('jetton owner can vote second time but only with new jettons', async () => {
-            let voting     = await votingContract(0n);
+            let voting     = await votingContract(votingId);
             const voteCtx  = votes[0];
             let votingCode = await DAO.getVotingCode();
             const user1JettonWallet = await userWallet(user1.address);
@@ -472,7 +472,7 @@ describe('Votings', () => {
         });
 
     it('jetton owner can vote in the other voting', async () => {
-            let voting     = await votingContract(1n);
+            let voting     = await votingContract(++votingId);
             expirationDate = renewExp(expirationDate);
 
             const createVoting = await DAO.sendCreateVoting(user1.getSender(),
@@ -534,7 +534,7 @@ describe('Votings', () => {
                 toNano('0.1'), // amount
                 beginCell().endCell() // payload
             );
-            let voting = await votingContract(2n);
+            let voting = await votingContract(++votingId);
             const voteCtx  = (await voting.getData()) as voteCtx;
             votes[2]       = voteCtx;
 
@@ -601,9 +601,7 @@ describe('Votings', () => {
             const payload  = getRandomPayload();
             const winMsg   = genMessage(user1.address, toNano('0.05'), payload);
 
-            const votingId   = 3n;
-
-            let voting = await votingContract(votingId);
+            let voting = await votingContract(++votingId);
 
             const votingRes = await DAO.sendCreateVoting(user1.getSender(),
                 expirationDate,
@@ -670,15 +668,10 @@ describe('Votings', () => {
 
             expirationDate   = getRandomExp(blockchain.now);
 
-
             const payload  = getRandomPayload();
             const winMsg   = genMessage(user1.address, toNano('0.05'), payload);
 
-
-
-            const votingId   = 4n;
-
-            let voting = await votingContract(votingId);
+            let voting = await votingContract(++votingId);
 
             const votingRes = await DAO.sendCreateVoting(user1.getSender(),
                 expirationDate,
