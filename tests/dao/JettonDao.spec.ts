@@ -147,7 +147,7 @@ describe('Votings', () => {
                         createdAt:0
                     },
                     body
-                    
+
                 }
             )).endCell();
 
@@ -162,7 +162,7 @@ describe('Votings', () => {
             let winner: ActiveWallet;
             let loser: ActiveWallet;
 
-        
+
            if(comp.max == w1) {
                 winner = u1;
                 loser  = u2;
@@ -253,6 +253,21 @@ describe('Votings', () => {
                 payload // payload
             );
 
+            // Voting deploy message
+            expect(createVoting.transactions).toHaveTransaction({
+                from: DAO.address,
+                to: voting.address,
+                deploy: true
+            });
+
+            // Voting initiated message to DAO
+            expect(createVoting.transactions).toHaveTransaction({
+                from: voting.address,
+                to: DAO.address,
+                body: JettonMinter.createVotingInitiated(votingId, expirationDate, user1.address)
+            });
+
+            // Confirmation message
             expect(createVoting.transactions).toHaveTransaction({ //notification
                         from: DAO.address,
                         to: user1.address,
@@ -277,6 +292,58 @@ describe('Votings', () => {
             expect(votingData.init).toEqual(true);
             expect(votingData.votedFor).toEqual(0n);
             expect(votingData.votedAgainst).toEqual(0n);
+    });
+
+    it('Should not allow voting initiated message from non-voting', async () =>{
+        const votingId = 0n;
+        const voting   = await votingContract(votingId);
+
+        let   res = await DAO.sendVotingInitiated(user1.getSender(),
+                                                  votingId,
+                                                  expirationDate,
+                                                  user1.address);
+        expect(res.transactions).toHaveTransaction({
+            from: user1.address,
+            to: DAO.address,
+            success: false,
+            exitCode: 78
+        });
+
+        const voteSender = blockchain.sender(voting.address);
+
+        res = await DAO.sendVotingInitiated(voteSender,
+                                            votingId + 1n, // Incorrect voting id
+                                            expirationDate,
+                                            user1.address);
+                                            //
+        // Voting with different id would get different address
+        expect(res.transactions).toHaveTransaction({
+            from: voting.address,
+            to: DAO.address,
+            success: false,
+            exitCode: 78
+        });
+
+        res = await DAO.sendVotingInitiated(voteSender,
+                                            votingId, // Correct id
+                                            expirationDate,
+                                            user1.address);
+        expect(res.transactions).toHaveTransaction({
+            from: voting.address,
+            to: DAO.address,
+            success: true
+        });
+
+        expect(res.transactions).toHaveTransaction({
+            from: DAO.address,
+            to: user1.address,
+            body: beginCell().storeUint(0xc39f0be6, 32) //// voting created
+                             .storeUint(0, 64) //query_id
+                             .storeAddress(voting.address) //voting_code
+                             .endCell()
+
+        });
+
     });
 
     it('jetton owner can vote for', async () => {
