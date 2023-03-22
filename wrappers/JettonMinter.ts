@@ -119,6 +119,44 @@ export class JettonMinter implements Contract {
             value: toNano("0.1") + minimal_execution_amount,
         });
     }
+
+    static createExecuteVotingMessage(voting_id:bigint,
+                                      expiration_date: bigint,
+                                      voted_for:bigint,
+                                      voted_against:bigint,
+                                      payload: Cell,
+                                      query_id:bigint = 0n) {
+        return beginCell().storeUint(0x4f0f7510, 32)
+                          .storeUint(query_id, 64)
+                          .storeUint(voting_id, 64)
+                          .storeUint(expiration_date, 48)
+                          .storeCoins(voted_for)
+                          .storeCoins(voted_against)
+                          .storeRef(payload)
+               .endCell();
+    }
+
+    async sendExecuteVotingMessage(provider: ContractProvider,
+                                   via: Sender,
+                                   voting_id:bigint,
+                                   expiration_date:bigint,
+                                   voted_for:bigint,
+                                   voted_against:bigint,
+                                   payload:Cell,
+                                  ) {
+
+        await provider.internal(via, {
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            body: JettonMinter.createExecuteVotingMessage(voting_id,
+                                                          expiration_date,
+                                                          voted_for,
+                                                          voted_against,
+                                                          payload),
+            value: toNano("0.1")
+        });
+
+    }
+
     async getWalletAddress(provider: ContractProvider, owner: Address): Promise<Address> {
         const res = await provider.get('get_wallet_address', [{ type: 'slice', cell: beginCell().storeAddress(owner).endCell() }])
         return res.stack.readAddress()
