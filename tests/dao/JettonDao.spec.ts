@@ -777,6 +777,107 @@ describe('DAO integrational', () => {
             votes[Number(votingId)] = voteData;
         })
 
+        it('End voting should only be allow after expiery', async() => {
+            const user1JettonWallet = await userWallet(user1.address);
+
+            expirationDate = getRandomExp(blockchain.now);
+
+            const payload  = getRandomPayload();
+            const winMsg   = genMessage(user1.address, payload);
+
+            let voting = await votingContract(++votingId);
+
+            const votingRes = await DAO.sendCreateVoting(user1.getSender(),
+                expirationDate,
+                toNano('0.1'), // minimal_execution_amount
+                randomAddress(),
+                toNano('0.5'), // amount
+                winMsg// payload
+            );
+
+            await user1JettonWallet.sendVote(user1.getSender(), voting.address, expirationDate, true, false);
+
+            let res = await voting.sendEndVoting(user1.getSender());
+
+            expect(res.transactions).toHaveTransaction({
+                from: user1.address,
+                to: voting.address,
+                success: false,
+                exitCode: 0xf6 // not finished
+            });
+        });
+
+        it('End voting message value should be >= minimal execution amount', async() => {
+            const user1JettonWallet = await userWallet(user1.address);
+
+            expirationDate = getRandomExp(blockchain.now);
+
+            const payload  = getRandomPayload();
+            const winMsg   = genMessage(user1.address, payload);
+
+            let voting = await votingContract(++votingId);
+
+            const execAmount = getRandomTon(1, 10);
+            const votingRes = await DAO.sendCreateVoting(user1.getSender(),
+                expirationDate,
+                execAmount, // minimal_execution_amount
+                randomAddress(),
+                toNano('0.5'), // amount
+                winMsg// payload
+            );
+
+            await user1JettonWallet.sendVote(user1.getSender(), voting.address, expirationDate, true, false);
+
+            blockchain.now = Number(expirationDate) + 1;
+            let res = await voting.sendEndVoting(user1.getSender(), execAmount - 1n);
+
+            expect(res.transactions).toHaveTransaction({
+                from: user1.address,
+                to: voting.address,
+                success: false,
+                exitCode: 0xf7 // no money
+            });
+        });
+
+        it('Voting can only be executed once', async() => {
+            const user1JettonWallet = await userWallet(user1.address);
+
+            expirationDate = getRandomExp(blockchain.now);
+
+            const payload  = getRandomPayload();
+            const winMsg   = genMessage(user1.address, payload);
+
+            let voting = await votingContract(++votingId);
+
+            const execAmount = getRandomTon(1, 10);
+            const votingRes = await DAO.sendCreateVoting(user1.getSender(),
+                expirationDate,
+                execAmount, // minimal_execution_amount
+                randomAddress(),
+                toNano('0.5'), // amount
+                winMsg// payload
+            );
+
+            await user1JettonWallet.sendVote(user1.getSender(), voting.address, expirationDate, true, false);
+
+            blockchain.now = Number(expirationDate) + 1;
+
+            let res = await voting.sendEndVoting(user1.getSender(), execAmount);
+
+            const votingData = await voting.getData();
+
+            expect(votingData.executed).toBe(true);
+
+            res = await voting.sendEndVoting(user1.getSender(), execAmount);
+            expect(res.transactions).toHaveTransaction({
+                from: user1.address,
+                to: voting.address,
+                success: false,
+                exitCode: 0xf8 // already executed
+            });
+        });
+
+
         it('Execute vote result should only allow voting address', async() => {
 
             expirationDate = getRandomExp(blockchain.now);
