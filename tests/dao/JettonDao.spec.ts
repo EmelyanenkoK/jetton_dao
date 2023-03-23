@@ -107,8 +107,8 @@ describe('DAO integrational', () => {
         );
 
         sortBalance = async (w1:ActiveJettonWallet, w2:ActiveJettonWallet) => {
-            const balance1 = await w1.getJettonBalance();
-            const balance2 = await w2.getJettonBalance();
+            const balance1 = await w1.getTotalBalance();
+            const balance2 = await w2.getTotalBalance();
             let sortRes:sortBalanceResult;
 
             if(balance1 >= balance2) {
@@ -473,6 +473,9 @@ describe('DAO integrational', () => {
             expect(await user1JettonWallet.getJettonBalance()).toEqual(0n);
         });
 
+    it('jetton owner can not vote after expiration date', async () => {
+
+    });
     it('jetton owner can vote in the other voting', async () => {
             let voting     = await votingContract(++votingId);
             expirationDate = renewExp(expirationDate);
