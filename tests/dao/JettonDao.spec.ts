@@ -38,7 +38,7 @@ type pickWinnerResult = {
 };
 
 
-describe('Votings', () => {
+describe('DAO integrational', () => {
     jest.setTimeout(15000);
     let jwallet_code = new Cell();
     let minter_code = new Cell();
