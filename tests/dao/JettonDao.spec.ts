@@ -6,8 +6,7 @@ import { Voting } from '../../wrappers/Voting';
 import { VoteKeeper } from '../../wrappers/VoteKeeper';
 import '@ton-community/test-utils';
 import { compile } from '@ton-community/blueprint';
-import { getRandom, getRandomExp, getRandomInt, getRandomPayload, getRandomTon, randomAddress, renewExp } from "../utils";
-import { BlockList } from 'net';
+import { differentAddress, getRandom, getRandomExp, getRandomInt, getRandomPayload, getRandomTon, randomAddress, renewExp } from "../utils";
 
 type voteCtx = {
     init: boolean,
@@ -45,6 +44,7 @@ describe('Votings', () => {
     let minter_code = new Cell();
     let voting_code = new Cell();
     let vote_keeper_code = new Cell();
+    let minter_update = new Cell();
     let blockchain: Blockchain;
     let user1:ActiveWallet;
     let user2:ActiveWallet;
@@ -70,6 +70,7 @@ describe('Votings', () => {
         minter_code = await compile('JettonMinter');
         voting_code = await compile('Voting');
         vote_keeper_code = await compile('VoteKeeper');
+        minter_update    = await compile('MinterUpdate');
         blockchain = await Blockchain.create();
         user1 = await blockchain.treasury('user1');
         user2 = await blockchain.treasury('user2');
@@ -924,5 +925,69 @@ describe('Votings', () => {
             // We have to set admin all the way back to make sure other cases work fine
             await DAO.sendChangeAdmin(user2.getSender(), prevAdmin);
         });
+
+        it('Code upgrade should only be allowed from admin', async() => {
+            const curAdmin    = await DAO.getAdminAddress();
+            const notAdmin    = differentAddress(curAdmin);
+
+            let res = await DAO.sendCodeUpgrade(blockchain.sender(notAdmin), minter_update, null);
+            expect(res.transactions).toHaveTransaction({
+                from: notAdmin,
+                to: DAO.address,
+                success: false,
+                exitCode: 79
+            });
+
+        });
+
+        it('Code upgrade successfull', async () => {
+            // Will slack compiling modified voting and use random cell
+            const votingUpdate = getRandomPayload();
+            const prevVoting   = await DAO.getVotingCode();
+            expect(prevVoting.equals(votingUpdate)).toBe(false);
+
+            const testMsg = internal({
+                from: user1.address,
+                to: DAO.address,
+                value: toNano('0.1'),
+                body: beginCell().storeUint(42, 32).storeUint(0, 64).endCell()
+            });
+
+            // Expect unknown op
+            let res = await blockchain.sendMessage(testMsg);
+            expect(res.transactions).toHaveTransaction({
+                from: user1.address,
+                to: DAO.address,
+                success: false,
+                exitCode: 0xffff // unknown op
+
+            });
+
+            res = await DAO.sendCodeUpgrade(user1.getSender(), minter_update, votingUpdate);
+            expect(res.transactions).toHaveTransaction({
+                from: user1.address,
+                to: DAO.address,
+                success: true
+            });
+
+
+            // Now it supposed to work
+            res = await blockchain.sendMessage(testMsg);
+            expect(res.transactions).toHaveTransaction({
+                from: user1.address,
+                to: DAO.address,
+                success: true
+            });
+
+            // Voting code should update too
+            expect((await DAO.getVotingCode()).equals(votingUpdate)).toBe(true);
+            //
+            // Have to switch code back since we drag blockchain state
+            await DAO.sendCodeUpgrade(user1.getSender(), minter_code, prevVoting);
+            expect(res.transactions).toHaveTransaction({
+                from: user1.address,
+                to: DAO.address,
+                success: true
+            });
         });
 });

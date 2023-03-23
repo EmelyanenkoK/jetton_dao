@@ -197,7 +197,24 @@ export class JettonMinter implements Contract {
         });
     }
 
+    static createCodeUpgradeMessage(minter_code: Cell | null, voting_code: Cell | null, query_id:bigint = 0n) {
+        return beginCell().storeUint(0x34aea60d, 32)
+                          .storeUint(query_id, 64)
+                          .storeMaybeRef(minter_code)
+                          .storeMaybeRef(voting_code)
+               .endCell();
+    }
 
+    async sendCodeUpgrade(provider: ContractProvider, via: Sender,
+                          minter_code: Cell | null, 
+                          voting_code: Cell | null,
+                          value:bigint = toNano('0.1')) {
+        await provider.internal(via, {
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            body: JettonMinter.createCodeUpgradeMessage(minter_code, voting_code),
+            value
+        });
+    }
 
     async getWalletAddress(provider: ContractProvider, owner: Address): Promise<Address> {
         const res = await provider.get('get_wallet_address', [{ type: 'slice', cell: beginCell().storeAddress(owner).endCell() }])
