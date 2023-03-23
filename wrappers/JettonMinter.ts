@@ -157,6 +157,23 @@ export class JettonMinter implements Contract {
 
     }
 
+    static createConfirmVotingMessage(voting_id:bigint, voter:Address, query_id:bigint = 0n) {
+        return beginCell().storeUint(0x0222fdcb, 32)
+                          .storeUint(query_id, 64)
+                          .storeUint(voting_id, 64)
+                          .storeAddress(voter)
+               .endCell();
+    }
+
+    async sendConfirmVoting(provider: ContractProvider, via: Sender,
+                            voting_id:bigint, voter: Address, value:bigint = toNano('0.1')) {
+        await provider.internal(via, {
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            body: JettonMinter.createConfirmVotingMessage(voting_id, voter),
+            value
+        });
+    }
+
     static createVotingInitiated(voting_id:bigint, expiration_date:bigint, initiator:Address, query_id:bigint = 0n){
         return beginCell().storeUint(0x8e2abb23, 32)
                           .storeUint(query_id, 64)
