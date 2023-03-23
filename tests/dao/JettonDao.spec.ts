@@ -526,6 +526,45 @@ describe('Votings', () => {
             expect(await user1JettonWallet.getJettonBalance()).toEqual(0n);
         });
 
+
+    it('Should not be able to request vote confirmation from non-voting address', async() => {
+        const voting = await votingContract(votingId);
+        const jetton = await userWallet(user1.address);
+
+        let res = await DAO.sendConfirmVoting(user1.getSender(), votingId, jetton.address)
+        expect(res.transactions).toHaveTransaction({
+            from: user1.address,
+            to: DAO.address,
+            success: false,
+            exitCode: 78
+        });
+        expect(res.transactions).not.toHaveTransaction({
+            from: DAO.address,
+            to: jetton.address
+        });
+
+    });
+
+    it('Vote confirmation should voting address should depend on voting id', async() => {
+
+        const voting = await votingContract(votingId);
+        const jetton = await userWallet(user1.address);
+
+        let res = await DAO.sendConfirmVoting(blockchain.sender(jetton.address), votingId + 1n, user1.address)
+        expect(res.transactions).toHaveTransaction({
+            from: jetton.address,
+            to: DAO.address,
+            success: false,
+            exitCode: 78
+        });
+        expect(res.transactions).not.toHaveTransaction({
+            from: DAO.address,
+            to: user1.address
+        });
+
+
+    });
+
     it('jetton owner can vote with confirmation', async () => {
             expirationDate = renewExp(expirationDate);
             await DAO.sendCreateVoting(user1.getSender(),
@@ -537,7 +576,7 @@ describe('Votings', () => {
             );
             let voting = await votingContract(++votingId);
             const voteCtx  = (await voting.getData()) as voteCtx;
-            votes[2]       = voteCtx;
+            votes[Number(votingId)] = voteCtx;
 
             let votingCode = await DAO.getVotingCode();
             const user1JettonWallet = await userWallet(user1.address);
@@ -837,55 +876,4 @@ describe('Votings', () => {
 
             expect(res.transactions).toHaveTransaction(proposalTrans);
         });
-
-
-
-        // TODO
-        // check voteKeeper data in tests
-
-        //DAO tests
-        //provide_voting_data
-        //execute_vote_result (successful: VoteFor won)
-        //execute_vote_result (failed: VoteAgainst won)
-        //upgrade_codes
-        // Negative (unauthorized):
-        //  voting_initiated
-        //  execute_vote_result
-        //  request_confirm_voting
-        //  upgrade_code
-        // Special case that DAO can be it's own owner:
-        //  1. Transfer admin rights to DAO
-        //  2. Mint through voting
-        //  3. Transfer admin rights back to "usual user"
-
-        // JettonWallet tests
-        //  create voting with wallet
-        //  clean expired votings
-        //  check that expired votings are deleted on next voting
-        // Negative (unauthorized):
-        //  vote
-        //  create_voting
-        //  confirm_voting
-        //  voting_created
-        //  clean_expired_votings
-        // Negative:
-        //  can not vote with expiration_date < now
-
-        // Voting tests
-        // negative (unauthorized):
-        // init_voting
-        // submit_votes
-        // end_voting
-        // end_voting (too early)
-        // end_voting (too less money)
-        // end_voting (second time)
-        // Negative (wrong data)
-        // wrong expiration date
-
-        // VoteKeeper
-        // unauthorized vote
-
-        // Adjust storage fees
-
-
 });
