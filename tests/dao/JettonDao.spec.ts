@@ -676,7 +676,7 @@ describe('Votings', () => {
             let voteData = await voting.getData();
             expect(voteData.executed).toBe(false);
 
-            const res = await voting.sendEndVoting(user1.getSender(), toNano('1'));
+            const res = await voting.sendEndVoting(user1.getSender());
 
             expect(res.transactions).toHaveTransaction({
                 from: voting.address,
@@ -747,7 +747,7 @@ describe('Votings', () => {
             let voteData = await voting.getData();
             expect(voteData.executed).toBe(false);
 
-            const res = await voting.sendEndVoting(user1.getSender(), toNano('1'));
+            const res = await voting.sendEndVoting(user1.getSender());
 
             expect(res.transactions).toHaveTransaction({
                 from: voting.address,
