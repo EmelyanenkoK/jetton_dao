@@ -10,6 +10,15 @@ export const randomAddress = (wc: number = 0) => {
     return new Address(wc, buf);
 };
 
+export const differentAddress = (old:Address) => {
+    let newAddress: Address;
+    do {
+        newAddress = randomAddress(old.workChain);
+    } while(newAddress.equals(old));
+
+    return newAddress;
+}
+
 export const getRandom = (min:number, max:number) => {
     return Math.random() * (max - min) + min;
 }
