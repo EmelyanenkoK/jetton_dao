@@ -381,7 +381,7 @@ describe('DAO integrational', () => {
 
             let voting     = await votingContract(votingId);
             let votingData = await voting.getData();
-            let voteCtx    = votes[0];
+            let voteCtx    = votes[Number(votingId)];
 
             expect(votingData.init).toEqual(voteCtx.init);
             expect(votingData.votedFor).toEqual(voteCtx.votedFor);
@@ -449,7 +449,7 @@ describe('DAO integrational', () => {
 
         it('jetton owner can vote second time but only with new jettons', async () => {
             let voting     = await votingContract(votingId);
-            const voteCtx  = votes[0];
+            const voteCtx  = votes[Number(votingId)];
             let votingCode = await DAO.getVotingCode();
             const user1JettonWallet = await userWallet(user1.address);
             const walletData = await user1JettonWallet.getDaoData();
