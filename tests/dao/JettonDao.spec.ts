@@ -878,6 +878,7 @@ describe('Votings', () => {
         });
 
         it('DAO self-admin case', async () => {
+            const prevAdmin = await DAO.getAdminAddress();
             await DAO.sendChangeAdmin(user1.getSender(), DAO.address);
 
             expirationDate = getRandomExp(blockchain.now);
@@ -919,5 +920,9 @@ describe('Votings', () => {
 
             curAdmin = await DAO.getAdminAddress();
             expect(curAdmin.equals(user2.address)).toBe(true);
+
+            // We have to set admin all the way back to make sure other cases work fine
+            await DAO.sendChangeAdmin(user2.getSender(), prevAdmin);
+        });
         });
 });
