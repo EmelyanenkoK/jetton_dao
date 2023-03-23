@@ -41,6 +41,37 @@ export class Voting implements Contract {
         };
     }
 
+    static submitVotesMessage(voter:Address,
+                              expiration_date:bigint,
+                              votes:bigint,
+                              vote_for:boolean,
+                              confirm_vote:boolean = false,
+                              query_id:bigint = 0n) {
+
+        return beginCell().storeUint(0x6edb1889, 32)
+                          .storeUint(query_id, 64)
+                          .storeAddress(voter)
+                          .storeUint(expiration_date, 48)
+                          .storeCoins(votes)
+                          .storeBit(vote_for)
+                          .storeBit(confirm_vote)
+               .endCell();
+    }
+
+    async sendSubmitVote(provider:ContractProvider,
+                         via:Sender,
+                         voter:Address,
+                         expiration_date:bigint,
+                         votes:bigint,
+                         vote_for:boolean,
+                         confirm_vote:boolean = false,
+                         value:bigint = toNano('0.1')) {
+        await provider.internal(via, {
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            body: Voting.submitVotesMessage(voter, expiration_date, votes, vote_for, confirm_vote),
+            value
+        });
+    }
     static endVotingMessage(query_id:bigint = 0n) {
         return beginCell().storeUint(0x66173a45, 32).storeUint(query_id, 64).endCell();
     }
