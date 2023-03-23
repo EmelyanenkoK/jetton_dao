@@ -45,7 +45,7 @@ export class Voting implements Contract {
         return beginCell().storeUint(0x66173a45, 32).storeUint(query_id, 64).endCell();
     }
 
-    async sendEndVoting(provider: ContractProvider, via: Sender, value:bigint=toNano('0.1')) {
+    async sendEndVoting(provider: ContractProvider, via: Sender, value:bigint=toNano('0.5')) {
         await provider.internal(via, {
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             body: Voting.endVotingMessage(),
