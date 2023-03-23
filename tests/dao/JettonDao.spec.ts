@@ -53,7 +53,7 @@ describe('Votings', () => {
     let initialUser2Balance:bigint;
     let initialUser3Balance:bigint;
     let votes:voteCtx[] = []; // Array index is voting index
-    let genMessage:(to:Address, value:bigint, body:Cell) => Cell;
+    let genMessage:(to:Address, body:Cell, value?:bigint) => Cell;
     let sortBalance:(w1:ActiveJettonWallet, w2:ActiveJettonWallet) => Promise<sortBalanceResult>;
     let pickWinner:(u1:ActiveWallet, u2:ActiveWallet) => Promise<pickWinnerResult>;
     let DAO:SandboxContract<JettonMinter>;
@@ -135,7 +135,7 @@ describe('Votings', () => {
             return sortRes;
         };
 
-        genMessage = (to:Address, value:bigint, body:Cell) => {
+        genMessage = (to:Address, body:Cell, value:bigint = 0n) => {
             return beginCell().store(storeMessageRelaxed(
                 {
                     info: {
@@ -640,7 +640,7 @@ describe('Votings', () => {
             expirationDate = getRandomExp(blockchain.now);
 
             const payload  = getRandomPayload();
-            const winMsg   = genMessage(user1.address, toNano('0.05'), payload);
+            const winMsg   = genMessage(user1.address, payload);
 
             let voting = await votingContract(++votingId);
 
@@ -710,7 +710,7 @@ describe('Votings', () => {
             expirationDate   = getRandomExp(blockchain.now);
 
             const payload  = getRandomPayload();
-            const winMsg   = genMessage(user1.address, toNano('0.05'), payload);
+            const winMsg   = genMessage(user1.address, payload);
 
             let voting = await votingContract(++votingId);
 
@@ -782,7 +782,7 @@ describe('Votings', () => {
             expirationDate = getRandomExp(blockchain.now);
 
             const payload  = getRandomPayload();
-            const winMsg   = genMessage(user1.address, toNano('0.05'), payload);
+            const winMsg   = genMessage(user1.address, payload);
 
             const supply   = await DAO.getTotalSupply();
 
@@ -834,7 +834,7 @@ describe('Votings', () => {
             expirationDate = getRandomExp(blockchain.now);
 
             const payload  = getRandomPayload();
-            const winMsg   = genMessage(user1.address, toNano('0.05'), payload);
+            const winMsg   = genMessage(user1.address, payload);
             const supply   = await DAO.getTotalSupply();
             const voting   = await votingContract(votingId);
             const votingSender = blockchain.sender(voting.address);
@@ -890,7 +890,7 @@ describe('Votings', () => {
 
             // Now we need to craft admin change message
             const adminChg  = JettonMinter.changeAdminMessage(user2.address);
-            const chgMsg    = genMessage(DAO.address, 0n, adminChg);
+            const chgMsg    = genMessage(DAO.address, adminChg);
 
             // Create voting
             await DAO.sendCreateVoting(user1.getSender(),
