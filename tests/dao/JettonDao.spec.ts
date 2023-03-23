@@ -876,4 +876,48 @@ describe('Votings', () => {
 
             expect(res.transactions).toHaveTransaction(proposalTrans);
         });
+
+        it('DAO self-admin case', async () => {
+            await DAO.sendChangeAdmin(user1.getSender(), DAO.address);
+
+            expirationDate = getRandomExp(blockchain.now);
+
+            let curAdmin = await DAO.getAdminAddress();
+            // DAO now admins itself
+            expect(DAO.address.equals(curAdmin)).toBeTruthy();
+
+            // Now we need to craft admin change message
+            const adminChg  = JettonMinter.changeAdminMessage(user2.address);
+            const chgMsg    = genMessage(DAO.address, 0n, adminChg);
+
+            // Create voting
+            await DAO.sendCreateVoting(user1.getSender(),
+                                       expirationDate,
+                                       toNano('0.1'), // minimal_execution_amount
+                                       randomAddress(),
+                                       toNano('0.5'), // amount
+                                       chgMsg // payload
+            );
+
+            const voting = await votingContract(++votingId);
+            const user2JettonWallet = await userWallet(user2.address);
+
+            await user2JettonWallet.sendVote(user2.getSender(),
+                                             voting.address,
+                                             expirationDate,
+                                             true, false);
+
+            blockchain.now = Number(expirationDate) + 1;
+            const res = await voting.sendEndVoting(user2.getSender());
+
+            expect(res.transactions).toHaveTransaction({
+                from: DAO.address,
+                to: DAO.address,
+                success: true,
+                body: adminChg
+            });
+
+            curAdmin = await DAO.getAdminAddress();
+            expect(curAdmin.equals(user2.address)).toBe(true);
+        });
 });
