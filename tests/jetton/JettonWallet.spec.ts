@@ -34,6 +34,7 @@ describe('JettonWallet', () => {
     let defaultContent:Cell;
     let votingId:bigint;
     let assertVoteCreation:(via:Sender, jettonWallet:ActiveJettonWallet, voting:Address, expDate:bigint, prop:Cell, expErr:number) => Promise<SendMessageResult>;
+    let assertWalletVote:(via:Sender, jettonWallet:ActiveJettonWallet, keeper:Address, expDate:bigint, expErr:number) => Promise<SendMessageResult>;
 
     beforeAll(async () => {
         jwallet_code = await compile('JettonWallet');
@@ -725,15 +726,14 @@ describe('JettonWallet', () => {
 
     });
 
-
-
     it('not owner should not be able to vote', async () => {
 
         const jettonWallet   = await userWallet(notDeployer.address);
         const expirationDate = getRandomExp();
         const prop           = getRandomPayload();
-        const votingAddress = await jettonMinter.getVotingAddress(votingId);
-        let   res = await assertVoteCreation(notDeployer.getSender(), jettonWallet, votingAddress, expirationDate, prop, 0);
+        const votingAddress = await jettonMinter.getVotingAddress(votingId++);
+        let   res    = await assertVoteCreation(notDeployer.getSender(), jettonWallet, votingAddress, expirationDate, prop, 0);
+        const keeper = await jettonWallet.getVoteKeeperAddress(votingAddress);
 
         res = await jettonWallet.sendVote(deployer.getSender(), votingAddress, expirationDate, true, false);
 
@@ -745,9 +745,86 @@ describe('JettonWallet', () => {
         });
         expect(res.transactions).not.toHaveTransaction({
             from: jettonWallet.address,
-            to:jettonMinter.address
+            to: keeper
         });
     })
+
+    it('it should not be possible to vote with expiration date > max', async () => {
+
+        blockchain.now       = Math.floor(Date.now() / 1000); // stop ticking please
+        const jettonWallet   = await userWallet(notDeployer.address);
+        let   expirationDate = getRandomExp(blockchain.now);
+        const prop           = getRandomPayload();
+        const votingAddress  = await jettonMinter.getVotingAddress(votingId++);
+        const keeper         = await jettonWallet.getVoteKeeperAddress(votingAddress);
+        let   res            = await assertVoteCreation(notDeployer.getSender(), jettonWallet, votingAddress, expirationDate, prop, 0);
+        expirationDate       = BigInt(blockchain.now + max_voting_duration);
+
+        res = await jettonWallet.sendVote(notDeployer.getSender(), votingAddress, expirationDate, true, false);
+
+
+        expect(res.transactions).toHaveTransaction({
+            from: notDeployer.address,
+            to: jettonWallet.address,
+            success:false,
+            exitCode: 0xf10
+        });
+        expect(res.transactions).not.toHaveTransaction({
+            from: jettonWallet.address,
+            to: keeper 
+        });
+        // Test edge case works
+        res = await jettonWallet.sendVote(notDeployer.getSender(), votingAddress, expirationDate - 1n, true, false);
+        expect(res.transactions).not.toHaveTransaction({
+            from: notDeployer.address,
+            to: jettonWallet.address,
+            success:false,
+            exitCode: 0xf10
+        });
+        expect(res.transactions).toHaveTransaction({
+            from: jettonWallet.address,
+            to: keeper
+        });
+ 
+    })
+
+    it('it should not be possible to vote with expiration date <= now()', async () => {
+
+        blockchain.now       = Math.floor(Date.now() / 1000); // stop ticking please
+        const jettonWallet   = await userWallet(notDeployer.address);
+        let   expirationDate = getRandomExp(blockchain.now);
+        const prop           = getRandomPayload();
+        const votingAddress  = await jettonMinter.getVotingAddress(votingId++);
+        let   res            = await assertVoteCreation(notDeployer.getSender(), jettonWallet, votingAddress, expirationDate, prop, 0);
+        const keeper         = await jettonWallet.getVoteKeeperAddress(votingAddress);
+        expirationDate       = BigInt(blockchain.now);
+
+        res = await jettonWallet.sendVote(notDeployer.getSender(), votingAddress, expirationDate, true, false);
+
+        expect(res.transactions).toHaveTransaction({
+            from: notDeployer.address,
+            to: jettonWallet.address,
+            success:false,
+            exitCode: 0xf9
+        });
+        expect(res.transactions).not.toHaveTransaction({
+            from: jettonWallet.address,
+            to: keeper 
+        });
+        // Test edge case works
+        res = await jettonWallet.sendVote(notDeployer.getSender(), votingAddress, expirationDate + 1n, true, false);
+        expect(res.transactions).not.toHaveTransaction({
+            from: notDeployer.address,
+            to: jettonWallet.address,
+            success:false,
+            exitCode: 0xf9
+        });
+        expect(res.transactions).toHaveTransaction({
+            from: jettonWallet.address,
+            to: keeper
+        });
+    });
+ 
 });
 
 
