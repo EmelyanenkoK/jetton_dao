@@ -6,36 +6,7 @@ import { Voting } from '../../wrappers/Voting';
 import { VoteKeeper } from '../../wrappers/VoteKeeper';
 import '@ton-community/test-utils';
 import { compile } from '@ton-community/blueprint';
-import { differentAddress, getRandom, getRandomExp, getRandomInt, getRandomPayload, getRandomTon, randomAddress, renewExp } from "../utils";
-
-type voteCtx = {
-    init: boolean,
-    votedFor: bigint,
-    votedAgainst: bigint
-};
-
-type ActiveWallet       = SandboxContract<TreasuryContract>;
-type ActiveJettonWallet = SandboxContract<JettonWallet>;
-
-type sortBalanceResult  = {
-    min: ActiveJettonWallet,
-    max: ActiveJettonWallet,
-    maxBalance: bigint,
-    minBalance: bigint,
-    isEq: boolean,
-    hasZero: boolean
-};
-
-type walletDesc = {
-    user:   ActiveWallet,
-    jetton: ActiveJettonWallet,
-    balance:bigint
-}
-
-type pickWinnerResult = {
-    winner: walletDesc,
-    loser:  walletDesc
-};
+import { assertVoteChain, differentAddress, getRandom, getRandomExp, getRandomInt, getRandomPayload, getRandomTon, randomAddress, renewExp, voteCtx, ActiveWallet, ActiveJettonWallet, pickWinnerResult, sortBalanceResult } from "../utils";
 
 
 describe('DAO integrational', () => {
@@ -354,14 +325,50 @@ describe('DAO integrational', () => {
             let votingCode = await DAO.getVotingCode();
             const user1JettonWallet = await userWallet(user1.address);
             const voteCtx  = votes[0];
-            let voteResult = await user1JettonWallet.sendVote(user1.getSender(), voting.address, expirationDate, true, false);
+            // let voteResult = await user1JettonWallet.sendVote(user1.getSender(), voting.address, expirationDate, true, false);
+            // Checking the whole vote chain
+            const keepR = await voteKeeperContract(user1JettonWallet, voting.address);
+
+            /*
+            expect(voteResult.transactions).toHaveTransaction({
+                from: user1.address,
+                to: user1JettonWallet.address,
+                body: JettonWallet.voteMessage(voting.address,
+                                               expirationDate,
+                                               true, false),
+                success: true
+                                               
+            });
+            expect(voteResult.transactions).toHaveTransaction({
+                from: user1JettonWallet.address,
+                to: keepR.address,
+                body: VoteKeeper.requestVoteMessage(user1.address,
+                                                    expirationDate,
+                                                    initialUser1Balance,
+                                                    true, false),
+                success: true
+            });
+            expect(voteResult.transactions).toHaveTransaction({
+                from: keepR.address,
+                to: voting.address,
+                body: Voting.submitVotesMessage(user1.address,
+                                                expirationDate,
+                                                initialUser1Balance,
+                                                true, false),
+                success: true
+            });
             expect(voteResult.transactions).toHaveTransaction({ //notification
                         from: voting.address,
                         to: user1.address,
                         // excesses 0xd53276db, query_id
                         body: beginCell().storeUint(0xd53276db, 32).storeUint(0, 64).endCell()
                     });
-
+            */
+            const res = await assertVoteChain(user1, user1JettonWallet,
+                                              0n,
+                                              initialUser1Balance,
+                                              voting.address,
+                                              expirationDate, true, false);
 
             voteCtx.votedFor += initialUser1Balance;
 
@@ -388,6 +395,7 @@ describe('DAO integrational', () => {
             expect(votingData.votedAgainst).toEqual(voteCtx.votedAgainst);
 
             const user3JettonWallet = await userWallet(user3.address);
+            /*
             const voteRes           = await user3JettonWallet.sendVote(user3.getSender(), voting.address, expirationDate, false, false);
 
 
@@ -397,6 +405,13 @@ describe('DAO integrational', () => {
                         // excesses 0xd53276db, query_id
                         body: beginCell().storeUint(0xd53276db, 32).storeUint(0, 64).endCell()
                     });
+            */
+            const res = await assertVoteChain(user3, user3JettonWallet,
+                                              0n,
+                                              initialUser3Balance,
+                                              voting.address,
+                                              expirationDate, false, false);
+
 
 
             voteCtx.votedAgainst += initialUser3Balance;
@@ -453,7 +468,16 @@ describe('DAO integrational', () => {
             let votingCode = await DAO.getVotingCode();
             const user1JettonWallet = await userWallet(user1.address);
             const walletData = await user1JettonWallet.getDaoData();
-            let voteResult = await user1JettonWallet.sendVote(user1.getSender(), voting.address, expirationDate, false, false);
+            // let voteResult = await user1JettonWallet.sendVote(user1.getSender(), voting.address, expirationDate, false, false);
+            const voteReult = await assertVoteChain(user1, user1JettonWallet,
+                                                    walletData.locked,
+                                                    walletData.balance,
+                                                    voting.address,
+                                                    expirationDate, false, false);
+
+
+
+            /*
             expect(voteResult.transactions).toHaveTransaction({ //notification
                         from: voting.address,
                         to: user1.address,
@@ -461,6 +485,7 @@ describe('DAO integrational', () => {
                         body: beginCell().storeUint(0xd53276db, 32).storeUint(0, 64).endCell()
                     });
 
+            */
             voteCtx.votedAgainst += walletData.balance;
 
             await assertKeeper(voting.address, user1JettonWallet, walletData.balance + walletData.locked);
@@ -505,7 +530,12 @@ describe('DAO integrational', () => {
 
 
             const user1JettonWallet = await userWallet(user1.address);
-            const walletBalance     = await user1JettonWallet.getLockedBalance();
+            const walletData        = await user1JettonWallet.getDaoData();
+            // Locked balance from previous vote
+            expect(walletData.locked).toBeGreaterThan(0n);
+            const expectedVote      = walletData.balance + walletData.locked;
+            //let voteResult = await assertVoteChain(user1, user1JettonWallet);
+            /*
             let voteResult = await user1JettonWallet.sendVote(user1.getSender(), voting.address, expirationDate, true, false);
 
             expect(voteResult.transactions).toHaveTransaction({ //notification
@@ -515,7 +545,16 @@ describe('DAO integrational', () => {
                         body: beginCell().storeUint(0xd53276db, 32).storeUint(0, 64).endCell()
                     });
 
-            voteCtx.votedFor += walletBalance;
+            */
+
+            let voteResult = await assertVoteChain(user1, 
+                                                   user1JettonWallet,
+                                                   0n, // New vote so full balance should count in it
+                                                   expectedVote, 
+                                                   voting.address,
+                                                   expirationDate,
+                                                   true, false);
+            voteCtx.votedFor += expectedVote;
 
             await assertKeeper(voting.address, user1JettonWallet, voteCtx.votedFor);
 
@@ -583,7 +622,14 @@ describe('DAO integrational', () => {
             const user1JettonWallet = await userWallet(user1.address);
             const walletBalance     = await user1JettonWallet.getTotalBalance();
 
-            let voteResult = await user1JettonWallet.sendVote(user1.getSender(), voting.address, expirationDate, false, true);
+            //let voteResult = await user1JettonWallet.sendVote(user1.getSender(), voting.address, expirationDate, false, true);
+            let voteResult = await assertVoteChain(user1, user1JettonWallet,
+                                                   0n,
+                                                   walletBalance,
+                                                   voting.address,
+                                                   expirationDate,
+                                                   false, // Vote against
+                                                   true); // Require confirmation
             expect(voteResult.transactions).toHaveTransaction({ //vote_confirmation
                         from: user1JettonWallet.address,
                         to: user1.address,
@@ -683,12 +729,14 @@ describe('DAO integrational', () => {
             keepR = await voteKeeperContract(user2JettonWallet, voting.address);
 
             expect(res.transactions).toHaveTransaction({
-                from: keepR.address,
-                to: voting.address,
+                from: user2.address,
+                to: user2JettonWallet.address,
+                /*
                 body: Voting.submitVotesMessage(user2.address,
                                                 expirationDate,
                                                 userBalance,
                                                 voteFor, voteConfirm),
+                */
                 success: false,
                 exitCode: 0xf9 // already finished
             });
