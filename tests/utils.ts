@@ -91,6 +91,10 @@ export const getRandomPayload = (): Cell => {
     return beginCell().storeCoins(getRandomTon(1, 2000)).endCell();
 }
 
+export const commonMsg = (op:bigint | number, query_id:bigint | number = 0) => {
+    return beginCell().storeUint(op, 32).storeUint(query_id, 64).endCell();
+}
+
 export const assertVoteChain = async (user:ActiveWallet, jetton:ActiveJettonWallet,
                                       expected_locked:bigint,
                                       expected_free: bigint,
