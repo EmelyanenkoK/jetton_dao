@@ -82,7 +82,7 @@ export class JettonWallet implements Contract {
     */
     static burnMessage(jetton_amount: bigint,
                        responseAddress:Address,
-                       customPayload: Cell) {
+                       customPayload: Cell | null) {
         return beginCell().storeUint(0x595f07bc, 32).storeUint(0, 64) // op, queryId
                           .storeCoins(jetton_amount).storeAddress(responseAddress)
                           .storeMaybeRef(customPayload)
@@ -92,7 +92,7 @@ export class JettonWallet implements Contract {
     async sendBurn(provider: ContractProvider, via: Sender, value: bigint,
                           jetton_amount: bigint,
                           responseAddress:Address,
-                          customPayload: Cell) {
+                          customPayload: Cell | null) {
         await provider.internal(via, {
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             body: JettonWallet.burnMessage(jetton_amount, responseAddress, customPayload),
@@ -177,6 +177,30 @@ export class JettonWallet implements Contract {
             body: JettonWallet.createVotingMessage(expiration_date, minimal_execution, proposal)
         });
     }
+    static createConfirmMessage(query_id:bigint = 0n) {
+        return beginCell().storeUint(0x039a374e, 32).storeUint(query_id, 64).endCell();
+    }
+    async sendConfirmVote(provider: ContractProvider, via:Sender, value:bigint = toNano('0.1')) {
+        await provider.internal(via, {
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            value,
+            body: JettonWallet.createConfirmMessage()
+        });
+    }
+    static votingCreatedMessage(voting_address:Address, query_id:bigint = 0n) {
+        return beginCell().storeUint(0xc39f0be6, 32)
+                        .storeUint(query_id, 64)
+                        .storeAddress(voting_address)
+                        .endCell();
+    }
+    async sendVotingCreated(provider: ContractProvider, via:Sender, voting_address:Address, value:bigint = toNano('0.1')) {
+        await provider.internal(via, {
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            value,
+            body: JettonWallet.votingCreatedMessage(voting_address)
+        });
+    }
+
     async getVotedWeight(provider: ContractProvider, voting_id:bigint, expiration_date:bigint) {
         let state = await provider.getState();
         if (state.state.type !== 'active') {
