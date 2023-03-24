@@ -731,12 +731,9 @@ describe('DAO integrational', () => {
             expect(res.transactions).toHaveTransaction({
                 from: user2.address,
                 to: user2JettonWallet.address,
-                /*
-                body: Voting.submitVotesMessage(user2.address,
-                                                expirationDate,
-                                                userBalance,
-                                                voteFor, voteConfirm),
-                */
+                body: JettonWallet.voteMessage(voting.address,
+                                               expirationDate,
+                                               voteFor, voteConfirm),
                 success: false,
                 exitCode: 0xf9 // already finished
             });
