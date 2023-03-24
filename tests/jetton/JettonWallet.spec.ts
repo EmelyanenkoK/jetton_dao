@@ -6,7 +6,7 @@ import { Voting } from '../../wrappers/Voting';
 import { VoteKeeper } from '../../wrappers/VoteKeeper';
 import '@ton-community/test-utils';
 import { compile } from '@ton-community/blueprint';
-import { getRandom, getRandomExp, getRandomInt, getRandomPayload, getRandomTon, randomAddress, renewExp, ActiveWallet, ActiveJettonWallet } from "../utils";
+import { getRandom, getRandomExp, getRandomInt, getRandomPayload, getRandomTon, randomAddress, renewExp, ActiveWallet, ActiveJettonWallet, commonMsg } from "../utils";
 import { exists } from 'fs';
 
 /*
@@ -822,6 +822,59 @@ describe('JettonWallet', () => {
         expect(res.transactions).toHaveTransaction({
             from: jettonWallet.address,
             to: keeper
+        });
+    });
+
+    it('Vote confirmation request should only be allowed from minter', async () => {
+        const jettonWallet = await userWallet(notDeployer.address);
+        let res = await jettonWallet.sendConfirmVote(notDeployer.getSender());
+        expect(res.transactions).toHaveTransaction({
+            from: notDeployer.address,
+            to: jettonWallet.address,
+            success: false,
+            exitCode: 710
+        });
+
+        res = await jettonWallet.sendConfirmVote(blockchain.sender(jettonMinter.address));
+        expect(res.transactions).toHaveTransaction({
+            from: jettonMinter.address,
+            to: jettonWallet.address,
+            success: true
+        });
+        expect(res.transactions).not.toHaveTransaction({
+            from: notDeployer.address,
+            to: jettonWallet.address,
+            success: false,
+            exitCode: 710
+        });
+
+
+    });
+ 
+    it('Voting creation notification should only be allowed from minter', async () => {
+        const jettonWallet = await userWallet(notDeployer.address);
+        const voting = randomAddress();
+        let res = await jettonWallet.sendVotingCreated(notDeployer.getSender(), voting);
+        expect(res.transactions).toHaveTransaction({
+            from: notDeployer.address,
+            to: jettonWallet.address,
+            success: false,
+            exitCode: 710
+        });
+
+        res = await jettonWallet.sendVotingCreated(blockchain.sender(jettonMinter.address), randomAddress());
+        expect(res.transactions).not.toHaveTransaction({
+            from: jettonMinter.address,
+            to: jettonWallet.address,
+            success: false,
+            exitCode: 710
+        });
+
+
+        expect(res.transactions).toHaveTransaction({
+            from: jettonMinter.address,
+            to: jettonWallet.address,
+            success: true
         });
     });
  
