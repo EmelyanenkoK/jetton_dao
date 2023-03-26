@@ -989,6 +989,164 @@ describe('DAO integrational', () => {
             });
         });
 
+        it('Voting should only accept votes from keeper', async() => {
+            const user1JettonWallet = await userWallet(user1.address);
+
+            expirationDate = getRandomExp(blockchain.now);
+            const payload  = getRandomPayload();
+            const winMsg   = genMessage(user1.address, payload);
+
+            let voting = await votingContract(++votingId);
+
+            const execAmount = getRandomTon(1, 10);
+            const votingRes = await DAO.sendCreateVoting(user1.getSender(),
+                expirationDate,
+                execAmount, // minimal_execution_amount
+                randomAddress(),
+                toNano('0.5'), // amount
+                winMsg// payload
+            );
+
+            await user1JettonWallet.sendVote(user1.getSender(), voting.address, expirationDate, true, false);
+            const keepR      = await voteKeeperContract(user1JettonWallet, voting.address);
+            const dataBefore = await voting.getData();
+            const voteNum    = BigInt(getRandomInt(1000, 2000));
+            let   res        = await voting.sendSubmitVote(user1.getSender(),
+                                                          user1.address,
+                                                          expirationDate,
+                                                          voteNum,
+                                                          true,
+                                                          false);
+            expect(res.transactions).toHaveTransaction({
+                from: user1.address,
+                to: voting.address,
+                success: false,
+                exitCode: 0xf5,
+            });
+            let dataAfter = await voting.getData();
+
+            expect(dataBefore.votedFor).toEqual(dataAfter.votedFor);
+
+            res = await voting.sendSubmitVote(blockchain.sender(keepR.address),
+                                              user1.address,
+                                              expirationDate,
+                                              voteNum,
+                                              true,
+                                              false);
+
+            expect(res.transactions).toHaveTransaction({
+                from: keepR.address,
+                to: voting.address,
+                success: true
+            });
+
+            dataAfter = await voting.getData();
+            expect(dataAfter.votedFor).toEqual(dataBefore.votedFor + voteNum);
+        });
+
+        it('Voting should only submit votes before expiration date', async() => {
+            const user1JettonWallet = await userWallet(user1.address);
+
+            expirationDate = getRandomExp(blockchain.now);
+            const payload  = getRandomPayload();
+            const winMsg   = genMessage(user1.address, payload);
+
+            let voting = await votingContract(++votingId);
+
+            const execAmount = getRandomTon(1, 10);
+            const votingRes = await DAO.sendCreateVoting(user1.getSender(),
+                expirationDate,
+                execAmount, // minimal_execution_amount
+                randomAddress(),
+                toNano('0.5'), // amount
+                winMsg// payload
+            );
+
+            await user1JettonWallet.sendVote(user1.getSender(), voting.address, expirationDate, true, false);
+            const keepR   = await voteKeeperContract(user1JettonWallet, voting.address);
+            const voteNum = BigInt(getRandomInt(1000, 2000));
+            // Let's pretend half of the time has passed
+            if(blockchain.now !== undefined) {
+                const timeDiff = Number(expirationDate) - blockchain.now;
+                blockchain.now += Math.floor(timeDiff / 2);
+            }
+
+            let res = await voting.sendSubmitVote(blockchain.sender(keepR.address),
+                                                  user1.address,
+                                                  expirationDate,
+                                                  voteNum,
+                                                  true,
+                                                  false);
+    
+            expect(res.transactions).toHaveTransaction({
+                from: keepR.address,
+                to: voting.address,
+                success: true
+            });
+
+            const dataBefore = await voting.getData();
+            // Now voting is finished
+            blockchain.now   = Number(expirationDate) + 1;
+            res = await voting.sendSubmitVote(blockchain.sender(keepR.address),
+                                              user1.address,
+                                              expirationDate,
+                                              voteNum,
+                                              true,
+                                              false);
+
+            expect(res.transactions).toHaveTransaction({
+                from: keepR.address,
+                to: voting.address,
+                success: false,
+                exitCode: 0xf9
+            });
+
+            const dataAfter = await voting.getData();
+            expect(dataAfter.votedFor).toEqual(dataBefore.votedFor);
+        });
+
+        it('Voting should not trust user-supplied expiration date', async() =>{
+            const user1JettonWallet = await userWallet(user1.address);
+
+            expirationDate = getRandomExp(blockchain.now);
+            const payload  = getRandomPayload();
+            const winMsg   = genMessage(user1.address, payload);
+
+            let voting = await votingContract(++votingId);
+
+            const execAmount = getRandomTon(1, 10);
+            const votingRes = await DAO.sendCreateVoting(user1.getSender(),
+                expirationDate,
+                execAmount, // minimal_execution_amount
+                randomAddress(),
+                toNano('0.5'), // amount
+                winMsg// payload
+            );
+
+            await user1JettonWallet.sendVote(user1.getSender(), voting.address, expirationDate, true, false);
+            const keepR   = await voteKeeperContract(user1JettonWallet, voting.address);
+            const voteNum = BigInt(getRandomInt(1000, 2000));
+
+            const dataBefore = await voting.getData();
+
+            const fakeExpDate = expirationDate - 1n;
+            // User is going to supply expirationDate higher than stored one
+            let res = await voting.sendSubmitVote(blockchain.sender(keepR.address),
+                                                  user1.address,
+                                                  fakeExpDate,
+                                                  voteNum,
+                                                  true,
+                                                  false);
+            expect(res.transactions).toHaveTransaction({
+                from: keepR.address,
+                to: voting.address,
+                success: false,
+                exitCode: 0xf32
+            });
+            const dataAfter = await voting.getData();
+            expect(dataAfter.votedFor).toEqual(dataBefore.votedFor);
+        });
+
 
         it('Execute vote result should only allow voting address', async() => {
 
@@ -1032,7 +1190,6 @@ describe('DAO integrational', () => {
                                                      supply,
                                                      0n,
                                                      winMsg);
-            // console.log(res.transactions[1].description);
             expect(res.transactions).toHaveTransaction({
                 from: voting.address,
                 to: DAO.address,
