@@ -885,7 +885,6 @@ describe('DAO integrational', () => {
                 from: DAO.address,
                 to: user1.address,
                 body: payload,
-                success: true
             });
 
             votes[Number(votingId)] = voteData;
@@ -919,6 +918,11 @@ describe('DAO integrational', () => {
                 success: false,
                 exitCode: 0xf6 // not finished
             });
+            expect(res.transactions).not.toHaveTransaction({
+                from: voting.address,
+                to: DAO.address
+            });
+
         });
 
         it('End voting message value should be >= minimal execution amount', async() => {
@@ -951,6 +955,11 @@ describe('DAO integrational', () => {
                 success: false,
                 exitCode: 0xf7 // no money
             });
+            expect(res.transactions).not.toHaveTransaction({
+                from: voting.address,
+                to: DAO.address
+            });
+
         });
 
         it('Voting can only be executed once', async() => {
@@ -986,6 +995,10 @@ describe('DAO integrational', () => {
                 to: voting.address,
                 success: false,
                 exitCode: 0xf8 // already executed
+            });
+            expect(res.transactions).not.toHaveTransaction({
+                from: voting.address,
+                to: DAO.address
             });
         });
 
