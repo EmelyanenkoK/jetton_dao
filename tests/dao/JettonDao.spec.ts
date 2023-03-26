@@ -30,7 +30,7 @@ describe('DAO integrational', () => {
     let DAO:SandboxContract<JettonMinter>;
     let userWallet:(address:Address) => Promise<ActiveJettonWallet>;
     let votingContract:(voting_id:bigint) => Promise<SandboxContract<Voting>>;
-    let voteKeeperContract:(wallet:ActiveJettonWallet, keeper_addr:Address) => Promise<SandboxContract<VoteKeeper>>;
+    let voteKeeperContract:(wallet:ActiveJettonWallet, voting_addr:Address) => Promise<SandboxContract<VoteKeeper>>;
     let defaultContent:Cell;
     let expirationDate:bigint;
     let assertKeeper:(vAddr:Address, wallet:ActiveJettonWallet, votes:bigint) => void;
