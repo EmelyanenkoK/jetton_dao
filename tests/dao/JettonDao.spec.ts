@@ -268,7 +268,7 @@ describe('DAO integrational', () => {
             expect(votingData.votedAgainst).toEqual(0n);
     });
 
-    it('Should not allow voting initiated message from non-voting', async () =>{
+    it('DAO should not allow voting initiated message from non-voting', async () =>{
         const voting   = await votingContract(votingId);
 
         let   res = await DAO.sendVotingInitiated(user1.getSender(),
@@ -583,6 +583,13 @@ describe('DAO integrational', () => {
             to: jetton.address
         });
 
+        res = await DAO.sendConfirmVoting(blockchain.sender(voting.address), votingId, jetton.address)
+
+        expect(res.transactions).toHaveTransaction({
+            from:voting.address,
+            to: DAO.address,
+            success: true
+        });
     });
 
     it('Vote confirmation should voting address should depend on voting id', async() => {
@@ -884,7 +891,7 @@ describe('DAO integrational', () => {
             votes[Number(votingId)] = voteData;
         })
 
-        it('End voting should only be allow after expiery', async() => {
+        it('End voting should only be allowed after expiery', async() => {
             const user1JettonWallet = await userWallet(user1.address);
 
             expirationDate = getRandomExp(blockchain.now);
@@ -1099,15 +1106,23 @@ describe('DAO integrational', () => {
             const chgMsg    = genMessage(DAO.address, adminChg);
 
             // Create voting
-            await DAO.sendCreateVoting(user1.getSender(),
+            let createVoting = await DAO.sendCreateVoting(user1.getSender(),
                                        expirationDate,
                                        toNano('0.1'), // minimal_execution_amount
                                        randomAddress(),
                                        toNano('0.5'), // amount
                                        chgMsg // payload
             );
-
+            // Voting deploy message
             const voting = await votingContract(++votingId);
+            expect(createVoting.transactions).toHaveTransaction({
+                from: DAO.address,
+                to: voting.address,
+                deploy: true
+            });
+
+
+
             const user2JettonWallet = await userWallet(user2.address);
 
             await user2JettonWallet.sendVote(user2.getSender(),
