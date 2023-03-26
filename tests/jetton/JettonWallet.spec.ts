@@ -70,8 +70,6 @@ describe('JettonWallet', () => {
                 to:   jettonMinter.address,
                 body: JettonMinter.createVotingMessage(expDate,
                                                        minExecution,
-                                                       randomAddress(),
-                                                       toNano('0.1'),
                                                        prop)
             };
 

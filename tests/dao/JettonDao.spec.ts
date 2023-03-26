@@ -222,8 +222,6 @@ describe('DAO integrational', () => {
             let createVoting = await DAO.sendCreateVoting(user1.getSender(),
                 expirationDate,
                 minExec, // minimal_execution_amount
-                randomAddress(),
-                toNano('0.1'), // amount
                 payload // payload
             );
 
@@ -505,8 +503,6 @@ describe('DAO integrational', () => {
             const createVoting = await DAO.sendCreateVoting(user1.getSender(),
                 expirationDate,
                 toNano('0.1'), // minimal_execution_amount
-                randomAddress(),
-                toNano('0.1'), // amount
                 beginCell().endCell() // payload
             );
 
@@ -617,8 +613,6 @@ describe('DAO integrational', () => {
             await DAO.sendCreateVoting(user1.getSender(),
                 expirationDate,
                 toNano('0.1'), // minimal_execution_amount
-                randomAddress(),
-                toNano('0.1'), // amount
                 beginCell().endCell() // payload
             );
             let voting = await votingContract(++votingId);
@@ -691,8 +685,6 @@ describe('DAO integrational', () => {
             await DAO.sendCreateVoting(user1.getSender(),
                 expirationDate,
                 toNano('0.1'), // minimal_execution_amount
-                randomAddress(),
-                toNano('0.1'), // amount
                 beginCell().endCell() // payload
             );
 
@@ -761,8 +753,6 @@ describe('DAO integrational', () => {
             const votingRes = await DAO.sendCreateVoting(user1.getSender(),
                 expirationDate,
                 toNano('0.1'), // minimal_execution_amount
-                randomAddress(),
-                toNano('0.5'), // amount
                 winMsg // payload
             );
 
@@ -831,8 +821,6 @@ describe('DAO integrational', () => {
             const votingRes = await DAO.sendCreateVoting(user1.getSender(),
                 expirationDate,
                 toNano('0.1'), // minimal_execution_amount
-                randomAddress(),
-                toNano('0.5'), // amount
                 winMsg// payload
             );
 
@@ -903,8 +891,6 @@ describe('DAO integrational', () => {
             const votingRes = await DAO.sendCreateVoting(user1.getSender(),
                 expirationDate,
                 toNano('0.1'), // minimal_execution_amount
-                randomAddress(),
-                toNano('0.5'), // amount
                 winMsg// payload
             );
 
@@ -939,8 +925,6 @@ describe('DAO integrational', () => {
             const votingRes = await DAO.sendCreateVoting(user1.getSender(),
                 expirationDate,
                 execAmount, // minimal_execution_amount
-                randomAddress(),
-                toNano('0.5'), // amount
                 winMsg// payload
             );
 
@@ -976,8 +960,6 @@ describe('DAO integrational', () => {
             const votingRes = await DAO.sendCreateVoting(user1.getSender(),
                 expirationDate,
                 execAmount, // minimal_execution_amount
-                randomAddress(),
-                toNano('0.5'), // amount
                 winMsg// payload
             );
 
@@ -1015,8 +997,6 @@ describe('DAO integrational', () => {
             const votingRes = await DAO.sendCreateVoting(user1.getSender(),
                 expirationDate,
                 execAmount, // minimal_execution_amount
-                randomAddress(),
-                toNano('0.5'), // amount
                 winMsg// payload
             );
 
@@ -1070,8 +1050,6 @@ describe('DAO integrational', () => {
             const votingRes = await DAO.sendCreateVoting(user1.getSender(),
                 expirationDate,
                 execAmount, // minimal_execution_amount
-                randomAddress(),
-                toNano('0.5'), // amount
                 winMsg// payload
             );
 
@@ -1131,8 +1109,6 @@ describe('DAO integrational', () => {
             const votingRes = await DAO.sendCreateVoting(user1.getSender(),
                 expirationDate,
                 execAmount, // minimal_execution_amount
-                randomAddress(),
-                toNano('0.5'), // amount
                 winMsg// payload
             );
 
@@ -1279,8 +1255,6 @@ describe('DAO integrational', () => {
             let createVoting = await DAO.sendCreateVoting(user1.getSender(),
                                        expirationDate,
                                        toNano('0.1'), // minimal_execution_amount
-                                       randomAddress(),
-                                       toNano('0.5'), // amount
                                        chgMsg // payload
             );
             // Voting deploy message
