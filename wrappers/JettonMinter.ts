@@ -1,5 +1,9 @@
 import { Address, beginCell, Cell, Contract, contractAddress, ContractProvider, Sender, SendMode, toNano, internal, storeMessageRelaxed} from 'ton-core';
 
+export type JettonMinterContent = {
+    type:0|1,
+    uri:string
+};
 export type JettonMinterConfig = {admin: Address; content: Cell; wallet_code: Cell, voting_code: Cell, vote_keeper_code: Cell};
 
 export function jettonMinterConfigToCell(config: JettonMinterConfig): Cell {
@@ -11,6 +15,13 @@ export function jettonMinterConfigToCell(config: JettonMinterConfig): Cell {
                       .storeUint(0, 64)
                       .storeRef(config.voting_code)
                       .storeRef(config.vote_keeper_code)
+           .endCell();
+}
+
+export function jettonContentToCell(content:JettonMinterContent) {
+    return beginCell()
+                      .storeUint(content.type, 8)
+                      .storeStringTail(content.uri) //Snake logic under the hood
            .endCell();
 }
 
