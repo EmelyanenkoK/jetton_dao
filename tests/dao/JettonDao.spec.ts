@@ -1135,6 +1135,109 @@ describe('DAO integrational', () => {
             const dataAfter = await voting.getData();
             expect(dataAfter.votedFor).toEqual(dataBefore.votedFor);
         });
+        it('Keeper should only accept messages from corresponding jetton wallet', async() => {
+            const user1JettonWallet = await userWallet(user1.address);
+
+            expirationDate = getRandomExp(blockchain.now);
+            const payload  = getRandomPayload();
+            const winMsg   = genMessage(user1.address, payload);
+
+            let voting = await votingContract(++votingId);
+
+            const execAmount = getRandomTon(1, 10);
+            let   res        = await DAO.sendCreateVoting(user1.getSender(),
+                                                          expirationDate,
+                                                          execAmount, // minimal_execution_amount
+                                                          winMsg// payload
+            );
+
+            const balance  = await user1JettonWallet.getTotalBalance();
+            res            = await user1JettonWallet.sendVote(user1.getSender(), voting.address, expirationDate, true, false);
+            const keepR    = await voteKeeperContract(user1JettonWallet, voting.address);
+            const voteBody = VoteKeeper.requestVoteMessage(user1.address,
+                                                           expirationDate,
+                                                           balance,
+                                                           true, false);
+
+            // Verify that same message from jetton wallet works fine
+            expect(res.transactions).toHaveTransaction({
+                from: user1JettonWallet.address,
+                to: keepR.address,
+                body: voteBody,
+                success: true
+            });
+            await assertKeeper(voting.address, user1JettonWallet, balance);
+            // Testing message from other jetton wallet
+            const otherJetton = await userWallet(user2.address);
+            res  = await keepR.sendRequestVote(blockchain.sender(otherJetton.address),
+                                                                 user1.address,
+                                                                 expirationDate,
+                                                                 balance,
+                                                                 true, false);
+            expect(res.transactions).toHaveTransaction({
+                from: otherJetton.address,
+                to: keepR.address,
+                body: voteBody,
+                success: false,
+                exitCode: 0x1f4,
+            });
+            // Make sure nothing changed in terms of stored votes
+            await assertKeeper(voting.address, user1JettonWallet, balance);
+
+            //Try same thing with regular wallet (just in case)
+            res  = await keepR.sendRequestVote(blockchain.sender(user1.address),
+                                                                 user1.address,
+                                                                 expirationDate,
+                                                                 balance,
+                                                                 true, false);
+            expect(res.transactions).toHaveTransaction({
+                from: user1.address,
+                to: keepR.address,
+                body: voteBody,
+                success: false,
+                exitCode: 0x1f4,
+            });
+            await assertKeeper(voting.address, user1JettonWallet, balance);
+
+        });
+        it('Keeper should accept only new votes', async() => {
+            const user1JettonWallet = await userWallet(user1.address);
+
+            expirationDate = getRandomExp(blockchain.now);
+            const payload  = getRandomPayload();
+            const winMsg   = genMessage(user1.address, payload);
+
+            let voting = await votingContract(++votingId);
+
+            const execAmount = getRandomTon(1, 10);
+            let   res        = await DAO.sendCreateVoting(user1.getSender(),
+                                                          expirationDate,
+                                                          execAmount, // minimal_execution_amount
+                                                          winMsg// payload
+            );
+
+            const balance  = await user1JettonWallet.getTotalBalance();
+            res            = await user1JettonWallet.sendVote(user1.getSender(), voting.address, expirationDate, true, false);
+            await assertKeeper(voting.address, user1JettonWallet, balance);
+            const keepR    = await voteKeeperContract(user1JettonWallet, voting.address);
+            const voteBody = VoteKeeper.requestVoteMessage(user1.address,
+                                                           expirationDate,
+                                                           balance,
+                                                           true, false);
+            // Let's pretend that same wallet send < balance vote, so there is noting to account for
+            res = await keepR.sendRequestVote(blockchain.sender(user1JettonWallet.address),
+                                              user1.address,
+                                              expirationDate,
+                                              balance - 1n,
+                                              true, false);
+            expect(res.transactions).toHaveTransaction({
+                from: user1JettonWallet.address,
+                to: keepR.address,
+                exitCode: 0x1f5
+            });
+            await assertKeeper(voting.address, user1JettonWallet, balance);
+
+        });
 
 
         it('Execute vote result should only allow voting address', async() => {
