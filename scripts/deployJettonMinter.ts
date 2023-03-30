@@ -22,7 +22,7 @@ const promptBool    = async (prompt:string, options:[string, string], ui:UIProvi
         let res = (await ui.input(prompt)).toLowerCase();
         yes = res == opts[0]
         if(!yes)
-            no  = res == opts[1].toLowerCase();
+            no  = res == opts[1];
     } while(!(yes || no));
 
     return yes;
@@ -30,7 +30,7 @@ const promptBool    = async (prompt:string, options:[string, string], ui:UIProvi
 const promptAddress = async (prompt:string, fallback:Address, provider:UIProvider) => {
 
     do {
-        let testAddr = (await provider.input(prompt)).replace(/\s/g,'');
+        let testAddr = (await provider.input(prompt)).replace(/^\s+|\s+$/g,'');
         try{
 
             return testAddr == "" ? fallback : Address.parse(testAddr);
