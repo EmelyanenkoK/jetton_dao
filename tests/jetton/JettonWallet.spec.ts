@@ -126,7 +126,7 @@ describe('JettonWallet', () => {
         });
         expect(mintResult.transactions).toHaveTransaction({ // excesses
             from: deployerJettonWallet.address,
-            to: jettonMinter.address
+            to: deployer.address
         });
 
 
