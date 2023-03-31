@@ -1,7 +1,7 @@
 import { Address, toNano } from 'ton-core';
 import { JettonMinter, JettonMinterContent, jettonContentToCell, jettonMinterConfigToCell } from '../wrappers/JettonMinter';
 import { compile, NetworkProvider, UIProvider} from '@ton-community/blueprint';
-import { AddressInfo } from 'net';
+import { promptAddress, promptBool, promptUrl } from '../wrappers/ui-utils';
 
 const formatUrl = "https://github.com/ton-blockchain/TEPs/blob/master/text/0064-token-data-standard.md#nft-collection-metadata-example-offchain";
 const exampleContent = {
@@ -13,56 +13,6 @@ const exampleContent = {
 };
 const urlPrompt = 'Please specify url pointing to jetton metadata(json):';
 
-const promptBool    = async (prompt:string, options:[string, string], ui:UIProvider) => {
-    let yes  = false;
-    let no   = false;
-    let opts = options.map(o => o.toLowerCase());
-
-    do {
-        let res = (await ui.input(prompt)).toLowerCase();
-        yes = res == opts[0]
-        if(!yes)
-            no  = res == opts[1];
-    } while(!(yes || no));
-
-    return yes;
-}
-const promptAddress = async (prompt:string, fallback:Address, provider:UIProvider) => {
-
-    do {
-        let testAddr = (await provider.input(prompt)).replace(/^\s+|\s+$/g,'');
-        try{
-
-            return testAddr == "" ? fallback : Address.parse(testAddr);
-        }
-        catch(e) {
-            provider.write(testAddr + " is not valid!\n");
-            prompt = "Please try again:";
-        }
-    } while(true);
-
-};
-
-const promptUrl = async(prompt:string, ui:UIProvider) => {
-    let retry  = false;
-    let input  = "";
-    let res    = "";
-
-    do {
-        input = await ui.input(prompt);
-        try{
-            let testUrl = new URL(input);
-            res   = testUrl.toString();
-            retry = false;
-        }
-        catch(e) {
-            ui.write(input + " doesn't look like a valid url:\n" + e);
-            retry = !(await promptBool('Use anyway?(y/n)', ['y', 'n'], ui));
-        }
-    } while(retry);
-    return input;
-}
-
 export async function run(provider: NetworkProvider) {
     const ui       = provider.ui();
     const sender   = provider.sender();
@@ -71,7 +21,7 @@ export async function run(provider: NetworkProvider) {
     const adminPrompt = `Please specify admin address(${sender.address} as default)`;
     ui.write(`Jetton deployer\nCurrent deployer onli supports off-chain format:${formatUrl}`);
 
-    let admin      = await promptAddress(adminPrompt, sender.address, ui);
+    let admin      = await promptAddress(adminPrompt, ui, sender.address);
     ui.write(`Admin address:${admin}\n`);
     let contentUrl = await promptUrl(urlPrompt, ui);
     ui.write(`Jetton content url:${contentUrl}`);
@@ -86,7 +36,7 @@ export async function run(provider: NetworkProvider) {
             const upd = await ui.choose('What do you want to update?', ['Admin', 'Url'], (c) => c);
 
             if(upd == 'Admin') {
-                admin = await promptAddress(adminPrompt, sender.address, ui);
+                admin = await promptAddress(adminPrompt, ui, sender.address);
             }
             else {
                 contentUrl = await promptUrl(urlPrompt, ui);
@@ -109,6 +59,4 @@ export async function run(provider: NetworkProvider) {
                                                   await compile('JettonMinter'));
 
     await provider.deploy(minter, toNano('0.05'));
-
-    // const openedContract = provider.open(jettonWallet);
 }
