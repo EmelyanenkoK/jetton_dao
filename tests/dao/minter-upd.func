@@ -1,10 +1,10 @@
-#include "stdlib.func";
-#include "jetton-utils.func";
-#include "dao-utils.func";
-#include "error-codes.func";
-#include "op-codes.func";
-#include "params.func";
-#include "messages.func";
+#include "../../contracts/stdlib.func";
+#include "../../contracts/jetton-utils.func";
+#include "../../contracts/dao-utils.func";
+#include "../../contracts/error-codes.func";
+#include "../../contracts/op-codes.func";
+#include "../../contracts/params.func";
+#include "../../contracts/messages.func";
 
 ;; Jettons discoverable smart contract
 
@@ -98,7 +98,7 @@ const int provide_voting_data_gas_consumption = 20000000;
                 .store_query_id(query_id)
                 .store_coins(jetton_amount) ;; max 124 bit
                 .store_uint(0, 2) ;; from_address, addr_none$00
-                .store_slice(sender_address) ;; response_address, 3 + 8 + 256 = 267 bit
+                .store_slice(my_address()) ;; response_address, 3 + 8 + 256 = 267 bit
                 .store_coins(forward_ton_amount) ;; forward_amount, 4 bit if zero
                 .store_uint(0, 1) ;; no forward_payload, 1 bit
                 .end_cell();
@@ -267,6 +267,10 @@ const int provide_voting_data_gas_consumption = 20000000;
                 .store_op(op::confirm_voting)
                 .store_query_id(query_id);
         return send_raw_message(msg.end_cell(), CARRY_REMAINING_GAS | IGNORE_ERRORS);
+    }
+    ;; Here is an update
+    if(op == 42) {
+        return ();
     }
     throw(error::unknown_op);
 }

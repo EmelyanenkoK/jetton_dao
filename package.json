@@ -7,7 +7,7 @@
     },
     "devDependencies": {
         "@ton-community/blueprint": "^0.4.1",
-        "@ton-community/sandbox": "^0.5.1",
+        "@ton-community/sandbox": "^0.6.1",
         "@ton-community/test-utils": "^0.0.2",
         "@types/jest": "^29.2.6",
         "@types/node": "^18.11.18",
