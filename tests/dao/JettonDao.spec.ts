@@ -593,9 +593,9 @@ describe('DAO integrational', () => {
         const voting = await votingContract(votingId);
         const jetton = await userWallet(user1.address);
 
-        let res = await DAO.sendConfirmVoting(blockchain.sender(jetton.address), votingId + 1n, user1.address)
+        let res = await DAO.sendConfirmVoting(blockchain.sender(voting.address), votingId + 1n, user1.address)
         expect(res.transactions).toHaveTransaction({
-            from: jetton.address,
+            from: voting.address,
             to: DAO.address,
             success: false,
             exitCode: 78
