@@ -1,10 +1,10 @@
-#include "stdlib.func";
-#include "jetton-utils.func";
-#include "dao-utils.func";
-#include "error-codes.func";
-#include "op-codes.func";
-#include "params.func";
-#include "messages.func";
+#include "../../contracts/stdlib.func";
+#include "../../contracts/jetton-utils.func";
+#include "../../contracts/dao-utils.func";
+#include "../../contracts/error-codes.func";
+#include "../../contracts/op-codes.func";
+#include "../../contracts/params.func";
+#include "../../contracts/messages.func";
 
 ;; Jettons discoverable smart contract
 
@@ -45,26 +45,6 @@ const int provide_voting_data_gas_consumption = 20000000;
             .store_ref(vote_keeper_code)
             .end_cell()
     );
-}
-
-;; Change this logic to use your own voting rules
-int is_proposal_accepted(int voted_for, int voted_against, int total_votes) inline {
-    {-
-      ;; Simple
-      int threshold = muldiv(total_votes, 1, 2);
-      return voted_for > threshold;
-    -}
-
-      ;; Minimal quorum, only voters count
-      int quorum = (voted_for + voted_against) > (total_votes / 10);
-      return quorum & ( voted_for > voted_against);
-
-    {-
-      ;; Soft majority voting https://forum.everscale.network/t/developers-contest-soft-majority-voting-system-finished/65
-      return voted_for > (muldiv(voted_against, 4, 5) + (total_votes / 10));
-      ;; soft supermajority
-      return voted_for > (voted_against + (total_votes / 3));
-    -}
 }
 
 () mint_tokens(slice to_address, cell jetton_wallet_code, cell vote_keeper_code, int amount, cell master_msg) impure {
@@ -118,7 +98,7 @@ int is_proposal_accepted(int voted_for, int voted_against, int total_votes) inli
                 .store_query_id(query_id)
                 .store_coins(jetton_amount) ;; max 124 bit
                 .store_uint(0, 2) ;; from_address, addr_none$00
-                .store_slice(sender_address) ;; response_address, 3 + 8 + 256 = 267 bit
+                .store_slice(my_address()) ;; response_address, 3 + 8 + 256 = 267 bit
                 .store_coins(forward_ton_amount) ;; forward_amount, 4 bit if zero
                 .store_uint(0, 1) ;; no forward_payload, 1 bit
                 .end_cell();
@@ -261,11 +241,10 @@ int is_proposal_accepted(int voted_for, int voted_against, int total_votes) inli
         slice voting_address = calculate_dao_voting_address(my_address(), voting_id, voting_code);
         throw_unless(error::unauthorized_vote_execution, equal_slice_bits(sender_address, voting_address));
         throw_unless(error::voting_not_finished, now() >= expiration_date);
-        (int voted_for, int voted_against, cell message) = (in_msg_body~load_coins(), in_msg_body~load_coins(), in_msg_body~load_maybe_ref());
-        if(is_proposal_accepted(voted_for, voted_against, total_supply)) {
-            ifnot(message.null?()) {
-              send_raw_message(message, CARRY_REMAINING_GAS);
-            }
+        (int voted_for, int voted_against, cell message) = (in_msg_body~load_coins(), in_msg_body~load_coins(), in_msg_body~load_ref());
+        ;; custom logic, change voting acceptance here
+        if((voted_for > voted_against) & (voted_for > total_supply / 10)) {
+            send_raw_message(message, CARRY_REMAINING_GAS);
         }
         return ();
     }
@@ -288,6 +267,10 @@ int is_proposal_accepted(int voted_for, int voted_against, int total_votes) inli
                 .store_op(op::confirm_voting)
                 .store_query_id(query_id);
         return send_raw_message(msg.end_cell(), CARRY_REMAINING_GAS | IGNORE_ERRORS);
+    }
+    ;; Here is an update
+    if(op == 42) {
+        return ();
     }
     throw(error::unknown_op);
 }

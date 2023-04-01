@@ -184,7 +184,7 @@ const int min_storage_fee = 30000000;
                     .store_maybe_ref(message_to_send);
         executed = true;
         save_data();
-        return send_raw_message(proposal, CARRY_REMAINING_GAS);
+        return send_raw_message(msg.end_cell(), CARRY_REMAINING_GAS);
     }
     throw(error::unknown_op);
 }

@@ -1,6 +1,19 @@
-import { Address, beginCell, Cell, Contract, contractAddress, ContractProvider, Sender, SendMode, toNano } from 'ton-core';
+import { Address, beginCell, Cell, Contract, contractAddress, ContractProvider, Sender, SendMode, toNano, TupleReader } from 'ton-core';
 
 export type JettonWalletConfig = {};
+
+export type JettonData = {
+    balance: bigint,
+    ownerAddress: Address,
+    masterAdderss: Address,
+    walletCode: Cell,
+};
+
+export type DaoData = JettonData & {
+   locked: bigint,
+   lockExpiration: number,
+   voteKeeperCode: Cell
+}
 
 export function jettonWalletConfigToCell(config: JettonWalletConfig): Cell {
     return beginCell().endCell();
@@ -37,9 +50,9 @@ export class JettonWallet implements Contract {
     }
     static transferMessage(jetton_amount: bigint, to: Address,
                            responseAddress:Address,
-                           customPayload: Cell,
+                           customPayload: Cell | null,
                            forward_ton_amount: bigint,
-                           forwardPayload: Cell) {
+                           forwardPayload: Cell | null) {
         return beginCell().storeUint(0xf8a7ea5, 32).storeUint(0, 64) // op, queryId
                           .storeCoins(jetton_amount).storeAddress(to)
                           .storeAddress(responseAddress)
@@ -52,9 +65,9 @@ export class JettonWallet implements Contract {
                               value: bigint,
                               jetton_amount: bigint, to: Address,
                               responseAddress:Address,
-                              customPayload: Cell,
+                              customPayload: Cell | null,
                               forward_ton_amount: bigint,
-                              forwardPayload: Cell) {
+                              forwardPayload: Cell | null) {
         await provider.internal(via, {
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             body: JettonWallet.transferMessage(jetton_amount, to, responseAddress, customPayload, forward_ton_amount, forwardPayload),
@@ -69,7 +82,7 @@ export class JettonWallet implements Contract {
     */
     static burnMessage(jetton_amount: bigint,
                        responseAddress:Address,
-                       customPayload: Cell) {
+                       customPayload: Cell | null) {
         return beginCell().storeUint(0x595f07bc, 32).storeUint(0, 64) // op, queryId
                           .storeCoins(jetton_amount).storeAddress(responseAddress)
                           .storeMaybeRef(customPayload)
@@ -79,7 +92,7 @@ export class JettonWallet implements Contract {
     async sendBurn(provider: ContractProvider, via: Sender, value: bigint,
                           jetton_amount: bigint,
                           responseAddress:Address,
-                          customPayload: Cell) {
+                          customPayload: Cell | null) {
         await provider.internal(via, {
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             body: JettonWallet.burnMessage(jetton_amount, responseAddress, customPayload),
@@ -142,6 +155,52 @@ export class JettonWallet implements Contract {
             value:toNano('0.1')
         });
     }
+
+    static createProposalBody(minimal_execution_amount:bigint, forwardMsg:Cell) {
+
+        return beginCell().storeCoins(minimal_execution_amount).storeRef(forwardMsg).endCell();
+    }
+
+
+    static createVotingMessage(expiration_date: bigint, minimal_execution_amount:bigint, payload:Cell, query_id: bigint = 0n) {
+        return beginCell().storeUint(0x318eff17, 32)
+                          .storeUint(query_id,64)
+                          .storeUint(expiration_date, 48)
+                          .storeRef(JettonWallet.createProposalBody(minimal_execution_amount, payload))
+               .endCell();
+    }
+
+    async sendCreateVoting(provider: ContractProvider, via:Sender, expiration_date: bigint, minimal_execution:bigint, proposal:Cell, value:bigint = toNano('0.1')) {
+        await provider.internal(via, {
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            value,
+            body: JettonWallet.createVotingMessage(expiration_date, minimal_execution, proposal)
+        });
+    }
+    static createConfirmMessage(query_id:bigint = 0n) {
+        return beginCell().storeUint(0x039a374e, 32).storeUint(query_id, 64).endCell();
+    }
+    async sendConfirmVote(provider: ContractProvider, via:Sender, value:bigint = toNano('0.1')) {
+        await provider.internal(via, {
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            value,
+            body: JettonWallet.createConfirmMessage()
+        });
+    }
+    static votingCreatedMessage(voting_address:Address, query_id:bigint = 0n) {
+        return beginCell().storeUint(0xc39f0be6, 32)
+                        .storeUint(query_id, 64)
+                        .storeAddress(voting_address)
+                        .endCell();
+    }
+    async sendVotingCreated(provider: ContractProvider, via:Sender, voting_address:Address, value:bigint = toNano('0.1')) {
+        await provider.internal(via, {
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            value,
+            body: JettonWallet.votingCreatedMessage(voting_address)
+        });
+    }
+
     async getVotedWeight(provider: ContractProvider, voting_id:bigint, expiration_date:bigint) {
         let state = await provider.getState();
         if (state.state.type !== 'active') {
@@ -150,8 +209,42 @@ export class JettonWallet implements Contract {
         let res = await provider.get('get_voted_weight', [{ type: 'int', value: voting_id}, { type: 'int', value: expiration_date}]);
         return res.stack.readBigNumber();
     }
-    async getVoteControllerAddress(provider: ContractProvider, voting_address:Address): Promise<Address> {
-        const res = await provider.get('get_vote_controller_address', [{ type: 'slice', cell: beginCell().storeAddress(voting_address).endCell() }])
+    async getVoteKeeperAddress(provider: ContractProvider, voting_address:Address): Promise<Address> {
+        const res = await provider.get('get_vote_keeper_address', [{ type: 'slice', cell: beginCell().storeAddress(voting_address).endCell() }])
         return res.stack.readAddress()
+    }
+
+    private unpackJettonData(stack:TupleReader): JettonData {
+        return {
+            balance: stack.readBigNumber(),
+            ownerAddress: stack.readAddress(),
+            masterAdderss: stack.readAddress(),
+            walletCode: stack.readCell(),
+        };
+    } 
+
+    async getJettonData(provider: ContractProvider): Promise<JettonData> {
+        const res = await provider.get('get_wallet_data', []);
+        return this.unpackJettonData(res.stack);
+    }
+
+    async getDaoData(provider: ContractProvider): Promise<DaoData> {
+        const res = await provider.get('get_dao_wallet_data', []);
+        return {
+            ...this.unpackJettonData(res.stack),
+            locked: res.stack.readBigNumber(),
+            lockExpiration: res.stack.readNumber(),
+            voteKeeperCode: res.stack.readCell()
+        };
+    }
+
+    async getLockedBalance(provider: ContractProvider): Promise<bigint> {
+        return (await this.getDaoData(provider)).locked;
+    }
+
+    async getTotalBalance(provider: ContractProvider): Promise<bigint> {
+        const res = await this.getDaoData(provider);
+
+        return res.locked + res.balance;
     }
 }
