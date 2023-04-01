@@ -96,8 +96,8 @@ export const commonMsg = (op:bigint | number, query_id:bigint | number = 0) => {
 }
 
 export const assertVoteChain = async (user:ActiveWallet, jetton:ActiveJettonWallet,
-                                      expected_locked:bigint,
-                                      expected_free: bigint,
+                                      expected_voted:bigint,
+                                      expected_not_voted: bigint,
                                       voting:Address, 
                                       expiration_date:bigint, 
                                       vote_for:boolean,
@@ -119,7 +119,7 @@ export const assertVoteChain = async (user:ActiveWallet, jetton:ActiveJettonWall
         to: keeperAddress,
         body: VoteKeeper.requestVoteMessage(user.address,
                                             expiration_date,
-                                            expected_free + expected_locked,
+                                            expected_not_voted + expected_voted,
                                             vote_for, confirm_vote),
         success: true
     });
@@ -128,7 +128,7 @@ export const assertVoteChain = async (user:ActiveWallet, jetton:ActiveJettonWall
         to: voting,
         body: Voting.submitVotesMessage(user.address,
                                         expiration_date,
-                                        expected_free,
+                                        expected_not_voted,
                                         vote_for, confirm_vote),
         success: true
     });
