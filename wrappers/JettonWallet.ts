@@ -1,4 +1,5 @@
 import { Address, beginCell, Cell, Contract, contractAddress, ContractProvider, Sender, SendMode, toNano, TupleReader } from 'ton-core';
+import { Voting } from './Voting';
 
 export type JettonWalletConfig = {};
 
@@ -156,27 +157,22 @@ export class JettonWallet implements Contract {
         });
     }
 
-    static createProposalBody(minimal_execution_amount:bigint, forwardMsg:Cell, description: string = "Sample description") {
-
-        return beginCell().storeCoins(minimal_execution_amount).storeMaybeRef(forwardMsg).storeStringTail(description).endCell();
-    }
-
-
-    static createVotingMessage(expiration_date: bigint, minimal_execution_amount:bigint, payload:Cell, query_id: bigint = 0n, description: string = "Sample description") {
+    static createVotingMessageThroughWallet(expiration_date: bigint, minimal_execution_amount:bigint, payload:Cell, query_id: bigint = 0n, description: string = "Sample description") {
         return beginCell().storeUint(0x318eff17, 32)
                           .storeUint(query_id,64)
                           .storeUint(expiration_date, 48)
-                          .storeRef(JettonWallet.createProposalBody(minimal_execution_amount, payload, description))
+                          .storeRef(Voting.createProposalBody(minimal_execution_amount, payload, description))
                .endCell();
     }
 
-    async sendCreateVoting(provider: ContractProvider, via:Sender, expiration_date: bigint, minimal_execution:bigint, proposal:Cell, value:bigint = toNano('0.1'), query_id: bigint = 0n,  description: string = "Sample description") {
+    async sendCreateVotingThroughWallet(provider: ContractProvider, via:Sender, expiration_date: bigint, minimal_execution:bigint, proposal:Cell, value:bigint = toNano('0.1'), query_id: bigint = 0n,  description: string = "Sample description") {
         await provider.internal(via, {
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             value,
-            body: JettonWallet.createVotingMessage(expiration_date, minimal_execution, proposal, query_id, description)
+            body: JettonWallet.createVotingMessageThroughWallet(expiration_date, minimal_execution, proposal, query_id, description)
         });
     }
+    // =================================== Test methods ===================================
     static createConfirmMessage(query_id:bigint = 0n) {
         return beginCell().storeUint(0x039a374e, 32).storeUint(query_id, 64).endCell();
     }
@@ -200,6 +196,7 @@ export class JettonWallet implements Contract {
             body: JettonWallet.votingCreatedMessage(voting_address)
         });
     }
+    // =================================== End of Test methods ===================================
 
     async getVotedWeight(provider: ContractProvider, voting_id:bigint, expiration_date:bigint) {
         let state = await provider.getState();

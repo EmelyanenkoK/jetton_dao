@@ -1,4 +1,5 @@
 import { Address, beginCell, Cell, Contract, contractAddress, ContractProvider, Sender, SendMode, toNano, internal, storeMessageRelaxed} from 'ton-core';
+import { Voting } from './Voting';
 
 export type JettonMinterContent = {
     type:0|1,
@@ -103,11 +104,6 @@ export class JettonMinter implements Contract {
         });
     }
 
-    static createProposalBody(minimal_execution_amount:bigint, forwardMsg:Cell, description: string = "Sample description") {
-
-        return beginCell().storeCoins(minimal_execution_amount).storeMaybeRef(forwardMsg).storeStringTail(description).endCell();
-    }
-
     static createVotingMessage(expiration_date: bigint,
                                minimal_execution_amount:bigint,
                                /*destination: Address, amount:bigint,*/ payload:Cell,
@@ -115,7 +111,7 @@ export class JettonMinter implements Contract {
         let forwardMsgBuilder = beginCell();
         //storeMessageRelaxed(internal({to:destination, value:amount, body:payload}))(forwardMsgBuilder);
         let forwardMsg = forwardMsgBuilder.endCell();
-        let proposal   = JettonMinter.createProposalBody(minimal_execution_amount, payload, description);
+        let proposal   = Voting.createProposalBody(minimal_execution_amount, payload, description);
         return beginCell().storeUint(0x1c7f9a1a, 32).storeUint(0, 64) // op, queryId
                           .storeUint(expiration_date, 48)
                           .storeRef(proposal)
@@ -132,7 +128,7 @@ export class JettonMinter implements Contract {
             value: toNano("0.1") + minimal_execution_amount,
         });
     }
-
+    // =================================== Test methods ===================================
     static createExecuteVotingMessage(voting_id:bigint,
                                       expiration_date: bigint,
                                       voted_for:bigint,
@@ -209,7 +205,7 @@ export class JettonMinter implements Contract {
             value
         });
     }
-
+    // =================================== End of Test methods ===================================
     static createCodeUpgradeMessage(minter_code: Cell | null, voting_code: Cell | null, query_id:bigint = 0n) {
         return beginCell().storeUint(0x34aea60d, 32)
                           .storeUint(query_id, 64)

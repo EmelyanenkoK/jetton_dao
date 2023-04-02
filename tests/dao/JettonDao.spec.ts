@@ -253,7 +253,7 @@ describe('DAO integrational', () => {
 
             votes[0] = votingData;
 
-            const proposal = JettonMinter.createProposalBody(minExec, payload);
+            const proposal = Voting.createProposalBody(minExec, payload);
 
             expect(votingData.votingId).toEqual(votingId);
             expect(votingData.daoAddress.equals(DAO.address)).toBeTruthy();

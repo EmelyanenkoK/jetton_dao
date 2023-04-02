@@ -63,7 +63,7 @@ describe('JettonWallet', () => {// return;
                      );
         assertVoteCreation = async (via:Sender, jettonWallet:ActiveJettonWallet, voting:Address, expDate:bigint, prop:Cell, expErr:number) => {
             const minExecution   = toNano('0.5');
-            const res = await jettonWallet.sendCreateVoting(via, expDate, minExecution, prop);
+            const res = await jettonWallet.sendCreateVotingThroughWallet(via, expDate, minExecution, prop);
 
             const createVoting = {
                 from: jettonWallet.address,

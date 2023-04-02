@@ -164,4 +164,9 @@ export class Voting implements Contract {
         });
     }
 
+    static createProposalBody(minimal_execution_amount:bigint, forwardMsg:Cell, description: string = "Sample description") {
+
+        return beginCell().storeCoins(minimal_execution_amount).storeMaybeRef(forwardMsg).storeStringTail(description).endCell();
+    }
+
 }
