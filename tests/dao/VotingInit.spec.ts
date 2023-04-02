@@ -17,7 +17,7 @@ let votingType:bigint;
 let votingId:bigint;
 let votingContract:(voting_id:bigint) => Promise<SandboxContract<Voting>>;
 
-describe('Voting init unit tests', () => { return;
+describe('Voting init unit tests', () => {
     beforeAll(async () => {
         votingId     = 0n;
         votingType   = 0n;
@@ -93,7 +93,7 @@ describe('Voting init unit tests', () => { return;
             deploy: true
         });
 
-        const votingBefore = await voting.getData();
+        const votingBefore = await voting.getFullData();
 
         const delta = BigInt(getRandomInt(100, 200));
         res = await voting.sendInitVoteMessage(master.getSender(),
@@ -118,7 +118,7 @@ describe('Voting init unit tests', () => { return;
         votingId++;
  
         
-        const votingAfter = await voting.getData();
+        const votingAfter = await voting.getFullData();
         // Should not change
         expect(votingBefore.votingType).toEqual(votingAfter.votingType);
         expect(votingBefore.expirationDate).toEqual(votingAfter.expirationDate);

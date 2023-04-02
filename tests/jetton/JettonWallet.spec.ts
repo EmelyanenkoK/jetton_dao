@@ -21,7 +21,7 @@ import { exists } from 'fs';
 //jetton params
 let fwd_fee = 1804014n, gas_consumption = 19500000n, min_tons_for_storage = 10000000n, max_voting_duration = 2592000;
 
-describe('JettonWallet', () => { return;
+describe('JettonWallet', () => {// return;
     let jwallet_code = new Cell();
     let minter_code = new Cell();
     let voting_code = new Cell();
@@ -70,8 +70,7 @@ describe('JettonWallet', () => { return;
                 to:   jettonMinter.address,
                 body: JettonMinter.createVotingMessage(expDate,
                                                        minExecution,
-                                                       prop,
-                                                       "Test description")
+                                                       prop)
             };
 
             const deployVoting = {
@@ -529,7 +528,7 @@ describe('JettonWallet', () => { return;
        let initialJettonBalance   = await deployerJettonWallet.getJettonBalance();
        let initialTotalSupply     = await jettonMinter.getTotalSupply();
        let burnAmount   = toNano('0.01');
-       let fwd_fee      = 1492012n /*1500012n*/, gas_consumption = 19000000n;
+       let fwd_fee      = 1492012n /*1500012n*/, gas_consumption = 19500000n;
        let minimalFee   = fwd_fee + 2n*gas_consumption;
 
        const sendLow    = await deployerJettonWallet.sendBurn(deployer.getSender(), minimalFee, // ton amount
