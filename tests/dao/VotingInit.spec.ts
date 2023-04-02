@@ -51,13 +51,13 @@ describe('Voting init unit tests', () => {
                                                      userWallet.address);
         expect(res.transactions).toHaveTransaction({
             from: master.address,
-            to: voting.address,
+            on: voting.address,
             success: true,
             deploy: true
         });
         expect(res.transactions).toHaveTransaction({
             from: voting.address,
-            to: master.address,
+            on: master.address,
             body: JettonMinter.createVotingInitiated(votingId, expirationDate, userWallet.address)
 
         });
@@ -88,7 +88,7 @@ describe('Voting init unit tests', () => {
                                                      userWallet.address);
         expect(res.transactions).toHaveTransaction({
             from: master.address,
-            to: voting.address,
+            on: voting.address,
             success: true,
             deploy: true
         });
@@ -106,13 +106,13 @@ describe('Voting init unit tests', () => {
         
         expect(res.transactions).toHaveTransaction({
             from: master.address,
-            to: voting.address,
+            on: voting.address,
             success: false,
             exitCode: 0xf3
         });
         expect(res.transactions).not.toHaveTransaction({
             from: voting.address,
-            to: userWallet.address,
+            on: userWallet.address,
             body: JettonMinter.createVotingInitiated(votingId, expirationDate, userWallet.address)
         });
         votingId++;
@@ -140,13 +140,13 @@ describe('Voting init unit tests', () => {
  
         expect(res.transactions).toHaveTransaction({
             from: userWallet.address,
-            to: voting.address,
+            on: voting.address,
             success: false,
             exitCode:0xf4
         });
         expect(res.transactions).not.toHaveTransaction({
             from: voting.address,
-            to: userWallet.address,
+            on: userWallet.address,
             body: JettonMinter.createVotingInitiated(votingId, expirationDate, userWallet.address)
 
         });

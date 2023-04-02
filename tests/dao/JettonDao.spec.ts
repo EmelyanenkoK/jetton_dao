@@ -228,21 +228,21 @@ describe('DAO integrational', () => {
             // Voting deploy message
             expect(createVoting.transactions).toHaveTransaction({
                 from: DAO.address,
-                to: voting.address,
+                on: voting.address,
                 deploy: true
             });
 
             // Voting initiated message to DAO
             expect(createVoting.transactions).toHaveTransaction({
                 from: voting.address,
-                to: DAO.address,
+                on: DAO.address,
                 body: JettonMinter.createVotingInitiated(votingId, expirationDate, user1.address)
             });
 
             // Confirmation message
             expect(createVoting.transactions).toHaveTransaction({ //notification
                         from: DAO.address,
-                        to: user1.address,
+                        on: user1.address,
                         body: beginCell().storeUint(0xc39f0be6, 32) //// voting created
                                          .storeUint(0, 64) //query_id
                                          .storeAddress(voting.address) //voting_code
@@ -275,7 +275,7 @@ describe('DAO integrational', () => {
                                                   user1.address);
         expect(res.transactions).toHaveTransaction({
             from: user1.address,
-            to: DAO.address,
+            on: DAO.address,
             success: false,
             exitCode: 78
         });
@@ -290,7 +290,7 @@ describe('DAO integrational', () => {
         // Voting with different id would get different address
         expect(res.transactions).toHaveTransaction({
             from: voting.address,
-            to: DAO.address,
+            on: DAO.address,
             success: false,
             exitCode: 78
         });
@@ -301,13 +301,13 @@ describe('DAO integrational', () => {
                                             user1.address);
         expect(res.transactions).toHaveTransaction({
             from: voting.address,
-            to: DAO.address,
+            on: DAO.address,
             success: true
         });
 
         expect(res.transactions).toHaveTransaction({
             from: DAO.address,
-            to: user1.address,
+            on: user1.address,
             body: beginCell().storeUint(0xc39f0be6, 32) //// voting created
                              .storeUint(0, 64) //query_id
                              .storeAddress(voting.address) //voting_code
@@ -399,7 +399,7 @@ describe('DAO integrational', () => {
 
             expect(voteRes.transactions).toHaveTransaction({ //notification
                         from: voting.address,
-                        to: user3.address,
+                        on: user3.address,
                         // excesses 0xd53276db, query_id
                         body: beginCell().storeUint(0xd53276db, 32).storeUint(0, 64).endCell()
                     });
@@ -430,7 +430,7 @@ describe('DAO integrational', () => {
                    user1.address, null, toNano('0.05'), null);
             expect(transferResult.transactions).toHaveTransaction({ //failed transfer
                         from: user1.address,
-                        to: user1JettonWallet.address,
+                        on: user1JettonWallet.address,
                         exitCode: 706 //error::not_enough_jettons = 706;
                     });
         });
@@ -448,12 +448,12 @@ describe('DAO integrational', () => {
                    user1.address, null, toNano('0.05'), null);
             expect(transferResult.transactions).not.toHaveTransaction({ //failed transfer
                         from: user1.address,
-                        to: user1JettonWallet.address,
+                        on: user1JettonWallet.address,
                         exitCode: 706 //error::not_enough_jettons = 706;
                     });
             expect(transferResult.transactions).toHaveTransaction({ // excesses
                         from: user2JettonWallet.address,
-                        to: user1.address,
+                        on: user1.address,
                         // excesses 0xd53276db, query_id
                         body: beginCell().storeUint(0xd53276db, 32).storeUint(0, 64).endCell()
                     });
@@ -478,7 +478,7 @@ describe('DAO integrational', () => {
             /*
             expect(voteResult.transactions).toHaveTransaction({ //notification
                         from: voting.address,
-                        to: user1.address,
+                        on: user1.address,
                         // excesses 0xd53276db, query_id
                         body: beginCell().storeUint(0xd53276db, 32).storeUint(0, 64).endCell()
                     });
@@ -508,7 +508,7 @@ describe('DAO integrational', () => {
 
             expect(createVoting.transactions).toHaveTransaction({
                 from: DAO.address,
-                to: user1.address,
+                on: user1.address,
                 body: beginCell().storeUint(0xc39f0be6, 32) //// voting created
                                          .storeUint(0, 64) //query_id
                                          .storeAddress(voting.address) //voting_code
@@ -536,7 +536,7 @@ describe('DAO integrational', () => {
 
             expect(voteResult.transactions).toHaveTransaction({ //notification
                         from: voting.address,
-                        to: user1.address,
+                        on: user1.address,
                         // excesses 0xd53276db, query_id
                         body: beginCell().storeUint(0xd53276db, 32).storeUint(0, 64).endCell()
                     });
@@ -570,20 +570,20 @@ describe('DAO integrational', () => {
         let res = await DAO.sendConfirmVoting(user1.getSender(), votingId, jetton.address)
         expect(res.transactions).toHaveTransaction({
             from: user1.address,
-            to: DAO.address,
+            on: DAO.address,
             success: false,
             exitCode: 78
         });
         expect(res.transactions).not.toHaveTransaction({
             from: DAO.address,
-            to: jetton.address
+            on: jetton.address
         });
 
         res = await DAO.sendConfirmVoting(blockchain.sender(voting.address), votingId, jetton.address)
 
         expect(res.transactions).toHaveTransaction({
             from:voting.address,
-            to: DAO.address,
+            on: DAO.address,
             success: true
         });
     });
@@ -596,13 +596,13 @@ describe('DAO integrational', () => {
         let res = await DAO.sendConfirmVoting(blockchain.sender(voting.address), votingId + 1n, user1.address)
         expect(res.transactions).toHaveTransaction({
             from: voting.address,
-            to: DAO.address,
+            on: DAO.address,
             success: false,
             exitCode: 78
         });
         expect(res.transactions).not.toHaveTransaction({
             from: DAO.address,
-            to: user1.address
+            on: user1.address
         });
 
 
@@ -633,7 +633,7 @@ describe('DAO integrational', () => {
                                                    true); // Require confirmation
             expect(voteResult.transactions).toHaveTransaction({ //vote_confirmation
                         from: user1JettonWallet.address,
-                        to: user1.address,
+                        on: user1.address,
                         body: beginCell().storeUint(0x5fe9b8ca, 32).storeUint(0, 64).endCell()
                     });
 
@@ -709,7 +709,7 @@ describe('DAO integrational', () => {
 
             expect(res.transactions).toHaveTransaction({
                 from: keepR.address,
-                to: voting.address,
+                on: voting.address,
                 body: sendVoteBody ,
                 success: true
             });
@@ -729,7 +729,7 @@ describe('DAO integrational', () => {
 
             expect(res.transactions).toHaveTransaction({
                 from: user2.address,
-                to: user2JettonWallet.address,
+                on: user2JettonWallet.address,
                 body: JettonWallet.voteMessage(voting.address,
                                                expirationDate,
                                                voteFor, voteConfirm),
@@ -758,7 +758,7 @@ describe('DAO integrational', () => {
 
             expect(votingRes.transactions).toHaveTransaction({ //notification
                         from: DAO.address,
-                        to: user1.address,
+                        on: user1.address,
                         body: beginCell().storeUint(0xc39f0be6, 32) //// voting created
                                          .storeUint(0, 64) //query_id
                                          .storeAddress(voting.address) //voting_code
@@ -785,7 +785,7 @@ describe('DAO integrational', () => {
 
             expect(res.transactions).toHaveTransaction({
                 from: voting.address,
-                to: DAO.address,
+                on: DAO.address,
                 body: JettonMinter.createExecuteVotingMessage(votingId,
                                                               expirationDate,
                                                               voteData.votedFor,
@@ -799,7 +799,7 @@ describe('DAO integrational', () => {
             // Expect winMsg to be sent from DAO
             expect(res.transactions).toHaveTransaction({
                 from: DAO.address,
-                to: user1.address,
+                on: user1.address,
                 body: payload
             });
 
@@ -826,7 +826,7 @@ describe('DAO integrational', () => {
 
             expect(votingRes.transactions).toHaveTransaction({ //notification
                         from: DAO.address,
-                        to: user1.address,
+                        on: user1.address,
                         body: beginCell().storeUint(0xc39f0be6, 32) //// voting created
                                          .storeUint(0, 64) //query_id
                                          .storeAddress(voting.address) //voting_code
@@ -854,7 +854,7 @@ describe('DAO integrational', () => {
 
             expect(res.transactions).toHaveTransaction({
                 from: voting.address,
-                to: DAO.address,
+                on: DAO.address,
                 success: true,
                 body: JettonMinter.createExecuteVotingMessage(votingId,
                                                               expirationDate,
@@ -871,7 +871,7 @@ describe('DAO integrational', () => {
             // No proposal message from DAO
             expect(res.transactions).not.toHaveTransaction({
                 from: DAO.address,
-                to: user1.address,
+                on: user1.address,
                 body: payload,
             });
 
@@ -900,13 +900,13 @@ describe('DAO integrational', () => {
 
             expect(res.transactions).toHaveTransaction({
                 from: user1.address,
-                to: voting.address,
+                on: voting.address,
                 success: false,
                 exitCode: 0xf6 // not finished
             });
             expect(res.transactions).not.toHaveTransaction({
                 from: voting.address,
-                to: DAO.address
+                on: DAO.address
             });
 
         });
@@ -935,13 +935,13 @@ describe('DAO integrational', () => {
 
             expect(res.transactions).toHaveTransaction({
                 from: user1.address,
-                to: voting.address,
+                on: voting.address,
                 success: false,
                 exitCode: 0xf7 // no money
             });
             expect(res.transactions).not.toHaveTransaction({
                 from: voting.address,
-                to: DAO.address
+                on: DAO.address
             });
 
         });
@@ -974,13 +974,13 @@ describe('DAO integrational', () => {
             res = await voting.sendEndVoting(user1.getSender(), execAmount);
             expect(res.transactions).toHaveTransaction({
                 from: user1.address,
-                to: voting.address,
+                on: voting.address,
                 success: false,
                 exitCode: 0xf8 // already executed
             });
             expect(res.transactions).not.toHaveTransaction({
                 from: voting.address,
-                to: DAO.address
+                on: DAO.address
             });
         });
 
@@ -1012,7 +1012,7 @@ describe('DAO integrational', () => {
                                                           false);
             expect(res.transactions).toHaveTransaction({
                 from: user1.address,
-                to: voting.address,
+                on: voting.address,
                 success: false,
                 exitCode: 0xf5,
             });
@@ -1029,7 +1029,7 @@ describe('DAO integrational', () => {
 
             expect(res.transactions).toHaveTransaction({
                 from: keepR.address,
-                to: voting.address,
+                on: voting.address,
                 success: true
             });
 
@@ -1071,7 +1071,7 @@ describe('DAO integrational', () => {
     
             expect(res.transactions).toHaveTransaction({
                 from: keepR.address,
-                to: voting.address,
+                on: voting.address,
                 success: true
             });
 
@@ -1087,7 +1087,7 @@ describe('DAO integrational', () => {
 
             expect(res.transactions).toHaveTransaction({
                 from: keepR.address,
-                to: voting.address,
+                on: voting.address,
                 success: false,
                 exitCode: 0xf9
             });
@@ -1128,7 +1128,7 @@ describe('DAO integrational', () => {
                                                   false);
             expect(res.transactions).toHaveTransaction({
                 from: keepR.address,
-                to: voting.address,
+                on: voting.address,
                 success: false,
                 exitCode: 0xf32
             });
@@ -1162,7 +1162,7 @@ describe('DAO integrational', () => {
             // Verify that same message from jetton wallet works fine
             expect(res.transactions).toHaveTransaction({
                 from: user1JettonWallet.address,
-                to: keepR.address,
+                on: keepR.address,
                 body: voteBody,
                 success: true
             });
@@ -1176,7 +1176,7 @@ describe('DAO integrational', () => {
                                                                  true, false);
             expect(res.transactions).toHaveTransaction({
                 from: otherJetton.address,
-                to: keepR.address,
+                on: keepR.address,
                 body: voteBody,
                 success: false,
                 exitCode: 0x1f4,
@@ -1192,7 +1192,7 @@ describe('DAO integrational', () => {
                                                                  true, false);
             expect(res.transactions).toHaveTransaction({
                 from: user1.address,
-                to: keepR.address,
+                on: keepR.address,
                 body: voteBody,
                 success: false,
                 exitCode: 0x1f4,
@@ -1232,7 +1232,7 @@ describe('DAO integrational', () => {
                                               true, false);
             expect(res.transactions).toHaveTransaction({
                 from: user1JettonWallet.address,
-                to: keepR.address,
+                on: keepR.address,
                 exitCode: 0x1f5
             });
             await assertKeeper(voting.address, user1JettonWallet, balance);
@@ -1269,7 +1269,7 @@ describe('DAO integrational', () => {
 
             expect(res.transactions).toHaveTransaction({
                 from: user1.address,
-                to: DAO.address,
+                on: DAO.address,
                 success: false,
                 exitCode: 78
             });
@@ -1284,7 +1284,7 @@ describe('DAO integrational', () => {
                                                      winMsg);
             expect(res.transactions).toHaveTransaction({
                 from: voting.address,
-                to: DAO.address,
+                on: DAO.address,
                 success: true
             });
 
@@ -1316,7 +1316,7 @@ describe('DAO integrational', () => {
 
             expect(res.transactions).toHaveTransaction({
                 from: voting.address,
-                to: DAO.address,
+                on: DAO.address,
                 success: false,
                 exitCode: 0xf6
             });
@@ -1333,7 +1333,7 @@ describe('DAO integrational', () => {
                                                      winMsg);
             expect(res.transactions).toHaveTransaction({
                 from: voting.address,
-                to: DAO.address,
+                on: DAO.address,
                 success: true
             });
 
@@ -1364,7 +1364,7 @@ describe('DAO integrational', () => {
             const voting = await votingContract(++votingId);
             expect(createVoting.transactions).toHaveTransaction({
                 from: DAO.address,
-                to: voting.address,
+                on: voting.address,
                 deploy: true
             });
 
@@ -1382,7 +1382,7 @@ describe('DAO integrational', () => {
 
             expect(res.transactions).toHaveTransaction({
                 from: DAO.address,
-                to: DAO.address,
+                on: DAO.address,
                 success: true,
                 body: adminChg
             });
@@ -1401,7 +1401,7 @@ describe('DAO integrational', () => {
             let res = await DAO.sendCodeUpgrade(blockchain.sender(notAdmin), minter_update, null);
             expect(res.transactions).toHaveTransaction({
                 from: notAdmin,
-                to: DAO.address,
+                on: DAO.address,
                 success: false,
                 exitCode: 79
             });
@@ -1425,7 +1425,7 @@ describe('DAO integrational', () => {
             let res = await blockchain.sendMessage(testMsg);
             expect(res.transactions).toHaveTransaction({
                 from: user1.address,
-                to: DAO.address,
+                on: DAO.address,
                 success: false,
                 exitCode: 0xffff // unknown op
 
@@ -1434,7 +1434,7 @@ describe('DAO integrational', () => {
             res = await DAO.sendCodeUpgrade(user1.getSender(), minter_update, votingUpdate);
             expect(res.transactions).toHaveTransaction({
                 from: user1.address,
-                to: DAO.address,
+                on: DAO.address,
                 success: true
             });
 
@@ -1443,7 +1443,7 @@ describe('DAO integrational', () => {
             res = await blockchain.sendMessage(testMsg);
             expect(res.transactions).toHaveTransaction({
                 from: user1.address,
-                to: DAO.address,
+                on: DAO.address,
                 success: true
             });
 
@@ -1454,7 +1454,7 @@ describe('DAO integrational', () => {
             await DAO.sendCodeUpgrade(user1.getSender(), minter_code, prevVoting);
             expect(res.transactions).toHaveTransaction({
                 from: user1.address,
-                to: DAO.address,
+                on: DAO.address,
                 success: true
             });
         });
