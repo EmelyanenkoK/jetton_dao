@@ -5,12 +5,12 @@ import { promptAddress, promptBool, promptUrl } from '../wrappers/ui-utils';
 
 const formatUrl = "https://github.com/ton-blockchain/TEPs/blob/master/text/0064-token-data-standard.md#nft-collection-metadata-example-offchain";
 const exampleContent = {
-   image: "https://s.getgems.io/nft/b/c/62fba50217c3fe3cbaad9e7f/image.png",
-   name: "TON Smart Challenge #2",
-   description: "TON Smart Challenge #2 Winners Trophy",
-   social_links: [],
-   marketplace: "getgems.io"
-};
+                          "name": "TON DAO",
+                          "description": "Sample of TON DAO Jetton",
+                          "symbol": "VOTE",
+                          "decimals": 0,
+                          "image": "https://www.svgrepo.com/show/108295/vote.svg"
+                       };
 const urlPrompt = 'Please specify url pointing to jetton metadata(json):';
 
 export async function run(provider: NetworkProvider) {
