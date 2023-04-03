@@ -2,9 +2,7 @@
 import { Address, toNano, fromNano } from "ton";
 import {Cell, beginCell, Transaction } from "ton-core";
 import { JettonWallet } from "../wrappers/JettonWallet";
-import { JettonMinter } from "../wrappers/JettonMinter";
 import { VoteKeeperTests } from "../wrappers/VoteKeeperTests";
-import { Voting } from "../wrappers/Voting";
 import { SandboxContract, TreasuryContract } from "@ton-community/sandbox";
 import { VotingTests } from "../wrappers/VotingTests";
 
