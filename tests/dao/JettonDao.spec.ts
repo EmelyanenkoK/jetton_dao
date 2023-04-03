@@ -9,6 +9,7 @@ import '@ton-community/test-utils';
 import { compile } from '@ton-community/blueprint';
 import { assertVoteChain, differentAddress, getRandom, getRandomExp, getRandomInt, getRandomPayload, getRandomTon, randomAddress, renewExp, voteCtx, ActiveWallet, ActiveJettonWallet, pickWinnerResult, sortBalanceResult } from "../utils";
 import { VotingTests } from '../../wrappers/VotingTests';
+import { VoteKeeperTests } from '../../wrappers/VoteKeeperTests';
 
 
 describe('DAO integrational', () => {
@@ -35,6 +36,7 @@ describe('DAO integrational', () => {
     let votingContract:(voting_id:bigint) => Promise<SandboxContract<Voting>>;
     let testVotingContract:(voting_id:bigint) => Promise<SandboxContract<VotingTests>>;
     let voteKeeperContract:(wallet:ActiveJettonWallet, voting_addr:Address) => Promise<SandboxContract<VoteKeeper>>;
+    let testKeeperContract:(wallet:ActiveJettonWallet, voting_addr:Address) => Promise<SandboxContract<VoteKeeperTests>>;
     let defaultContent:Cell;
     let expirationDate:bigint;
     let assertKeeper:(vAddr:Address, wallet:ActiveJettonWallet, votes:bigint) => void;
@@ -84,6 +86,12 @@ describe('DAO integrational', () => {
 
         voteKeeperContract = async (jw:ActiveJettonWallet, voting_addr:Address) => blockchain.openContract(
             VoteKeeper.createFromAddress(
+                await jw.getVoteKeeperAddress(voting_addr)
+            )
+        );
+
+        testKeeperContract = async (jw:ActiveJettonWallet, voting_addr:Address) => blockchain.openContract(
+            VoteKeeperTests.createFromAddress(
                 await jw.getVoteKeeperAddress(voting_addr)
             )
         );
@@ -1164,11 +1172,11 @@ describe('DAO integrational', () => {
 
             const balance  = await user1JettonWallet.getTotalBalance();
             res            = await user1JettonWallet.sendVote(user1.getSender(), voting.address, expirationDate, true, false);
-            const keepR    = await voteKeeperContract(user1JettonWallet, voting.address);
-            const voteBody = VoteKeeper.requestVoteMessage(user1.address,
-                                                           expirationDate,
-                                                           balance,
-                                                           true, false);
+            const keepR    = await testKeeperContract(user1JettonWallet, voting.address);
+            const voteBody = VoteKeeperTests.requestVoteMessage(user1.address,
+                                                                expirationDate,
+                                                                balance,
+                                                                true, false);
 
             // Verify that same message from jetton wallet works fine
             expect(res.transactions).toHaveTransaction({
@@ -1230,11 +1238,11 @@ describe('DAO integrational', () => {
             const balance  = await user1JettonWallet.getTotalBalance();
             res            = await user1JettonWallet.sendVote(user1.getSender(), voting.address, expirationDate, true, false);
             await assertKeeper(voting.address, user1JettonWallet, balance);
-            const keepR    = await voteKeeperContract(user1JettonWallet, voting.address);
-            const voteBody = VoteKeeper.requestVoteMessage(user1.address,
-                                                           expirationDate,
-                                                           balance,
-                                                           true, false);
+            const keepR    = await testKeeperContract(user1JettonWallet, voting.address);
+            const voteBody = VoteKeeperTests.requestVoteMessage(user1.address,
+                                                                expirationDate,
+                                                                balance,
+                                                                true, false);
             // Let's pretend that same wallet send < balance vote, so there is noting to account for
             res = await keepR.sendRequestVote(blockchain.sender(user1JettonWallet.address),
                                               user1.address,
