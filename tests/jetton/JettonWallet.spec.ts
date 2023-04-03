@@ -8,6 +8,7 @@ import '@ton-community/test-utils';
 import { compile } from '@ton-community/blueprint';
 import { getRandom, getRandomExp, getRandomInt, getRandomPayload, getRandomTon, randomAddress, renewExp, ActiveWallet, ActiveJettonWallet, commonMsg } from "../utils";
 import { exists } from 'fs';
+import { JettonWalletTests } from '../../wrappers/JettonWalletTests';
 
 /*
    These tests check compliance with the TEP-74 and TEP-89,
@@ -30,7 +31,8 @@ describe('JettonWallet', () => {// return;
     let deployer:SandboxContract<TreasuryContract>;
     let notDeployer:SandboxContract<TreasuryContract>;
     let jettonMinter:SandboxContract<JettonMinter>;
-    let userWallet: (address:Address) => Promise<ActiveJettonWallet>
+    let userWallet: (address:Address) => Promise<ActiveJettonWallet>;
+    let testWallet: (address:Address) => Promise<SandboxContract<JettonWalletTests>>;
     let defaultContent:Cell;
     let votingId:bigint;
     let assertVoteCreation:(via:Sender, jettonWallet:ActiveJettonWallet, voting:Address, expDate:bigint, prop:Cell, expErr:number) => Promise<SendMessageResult>;
@@ -61,6 +63,12 @@ describe('JettonWallet', () => {// return;
                             await jettonMinter.getWalletAddress(address)
                           )
                      );
+        testWallet = async (address:Address) => blockchain.openContract(
+                          JettonWalletTests.createFromAddress(
+                            await jettonMinter.getWalletAddress(address)
+                          )
+                     );
+
         assertVoteCreation = async (via:Sender, jettonWallet:ActiveJettonWallet, voting:Address, expDate:bigint, prop:Cell, expErr:number) => {
             const minExecution   = toNano('0.5');
             const res = await jettonWallet.sendCreateVotingThroughWallet(via, expDate, minExecution, prop);
@@ -1000,7 +1008,7 @@ describe('JettonWallet', () => {// return;
     });
 
     it('Vote confirmation request should only be allowed from minter', async () => {
-        const jettonWallet = await userWallet(notDeployer.address);
+        const jettonWallet = await testWallet(notDeployer.address);
         let res = await jettonWallet.sendConfirmVote(notDeployer.getSender());
         expect(res.transactions).toHaveTransaction({
             from: notDeployer.address,
@@ -1026,7 +1034,7 @@ describe('JettonWallet', () => {// return;
     });
  
     it('Voting creation notification should only be allowed from minter', async () => {
-        const jettonWallet = await userWallet(notDeployer.address);
+        const jettonWallet = await testWallet(notDeployer.address);
         const voting = randomAddress();
         let res = await jettonWallet.sendVotingCreated(notDeployer.getSender(), voting);
         expect(res.transactions).toHaveTransaction({

@@ -172,31 +172,6 @@ export class JettonWallet implements Contract {
             body: JettonWallet.createVotingMessageThroughWallet(expiration_date, minimal_execution, proposal, query_id, description)
         });
     }
-    // =================================== Test methods ===================================
-    static createConfirmMessage(query_id:bigint = 0n) {
-        return beginCell().storeUint(0x039a374e, 32).storeUint(query_id, 64).endCell();
-    }
-    async sendConfirmVote(provider: ContractProvider, via:Sender, value:bigint = toNano('0.1')) {
-        await provider.internal(via, {
-            sendMode: SendMode.PAY_GAS_SEPARATELY,
-            value,
-            body: JettonWallet.createConfirmMessage()
-        });
-    }
-    static votingCreatedMessage(voting_address:Address, query_id:bigint = 0n) {
-        return beginCell().storeUint(0xc39f0be6, 32)
-                        .storeUint(query_id, 64)
-                        .storeAddress(voting_address)
-                        .endCell();
-    }
-    async sendVotingCreated(provider: ContractProvider, via:Sender, voting_address:Address, value:bigint = toNano('0.1')) {
-        await provider.internal(via, {
-            sendMode: SendMode.PAY_GAS_SEPARATELY,
-            value,
-            body: JettonWallet.votingCreatedMessage(voting_address)
-        });
-    }
-    // =================================== End of Test methods ===================================
 
     async getVotedWeight(provider: ContractProvider, voting_id:bigint, expiration_date:bigint) {
         let state = await provider.getState();
