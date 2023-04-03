@@ -4,7 +4,8 @@ import { Address, Cell, ContractProvider } from "ton-core";
 import { Voting } from "../../wrappers/Voting";
 import '@ton-community/test-utils';
 import { ActiveWallet, getRandomExp, getRandomInt, getRandomPayload, randomAddress } from "../utils";
-import { JettonMinter } from "../../wrappers/JettonMinter";
+import { VotingTests } from "../../wrappers/VotingTests";
+import { JettonMinterTests } from "../../wrappers/JettonMinterTests";
 
 let blockchain: Blockchain;
 let jwallet_code:Cell;
@@ -15,7 +16,7 @@ let userWallet:ActiveWallet;
 let proposal:Cell;
 let votingType:bigint;
 let votingId:bigint;
-let votingContract:(voting_id:bigint) => Promise<SandboxContract<Voting>>;
+let votingContract:(voting_id:bigint) => Promise<SandboxContract<VotingTests>>;
 
 describe('Voting init unit tests', () => {
     beforeAll(async () => {
@@ -30,7 +31,7 @@ describe('Voting init unit tests', () => {
         proposal     = getRandomPayload();
 
         votingContract = async (voting_id:bigint) => await blockchain.openContract(
-                              Voting.createFromConfig(
+                              VotingTests.createFromConfig(
                                   {master: master.address, voting_id}, voting_code)
 
          );
@@ -58,7 +59,7 @@ describe('Voting init unit tests', () => {
         expect(res.transactions).toHaveTransaction({
             from: voting.address,
             on: master.address,
-            body: JettonMinter.createVotingInitiated(votingId, expirationDate, userWallet.address)
+            body: JettonMinterTests.createVotingInitiated(votingId, expirationDate, userWallet.address)
 
         });
         const votingData = await voting.getFullData();
@@ -113,7 +114,7 @@ describe('Voting init unit tests', () => {
         expect(res.transactions).not.toHaveTransaction({
             from: voting.address,
             on: userWallet.address,
-            body: JettonMinter.createVotingInitiated(votingId, expirationDate, userWallet.address)
+            body: JettonMinterTests.createVotingInitiated(votingId, expirationDate, userWallet.address)
         });
         votingId++;
  
@@ -147,7 +148,7 @@ describe('Voting init unit tests', () => {
         expect(res.transactions).not.toHaveTransaction({
             from: voting.address,
             on: userWallet.address,
-            body: JettonMinter.createVotingInitiated(votingId, expirationDate, userWallet.address)
+            body: JettonMinterTests.createVotingInitiated(votingId, expirationDate, userWallet.address)
 
         });
  

@@ -6,6 +6,7 @@ import { JettonMinter } from "../wrappers/JettonMinter";
 import { VoteKeeper } from "../wrappers/VoteKeeper";
 import { Voting } from "../wrappers/Voting";
 import { SandboxContract, TreasuryContract } from "@ton-community/sandbox";
+import { VotingTests } from "../wrappers/VotingTests";
 
 export type voteCtx = {
     init: boolean,
@@ -126,10 +127,10 @@ export const assertVoteChain = async (user:ActiveWallet, jetton:ActiveJettonWall
     expect(res.transactions).toHaveTransaction({
         from: keeperAddress,
         to: voting,
-        body: Voting.submitVotesMessage(user.address,
-                                        expiration_date,
-                                        expected_not_voted,
-                                        vote_for, confirm_vote),
+        body: VotingTests.submitVotesMessage(user.address,
+                                             expiration_date,
+                                             expected_not_voted,
+                                             vote_for, confirm_vote),
         success: true
     });
 
