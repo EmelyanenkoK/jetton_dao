@@ -3,7 +3,7 @@ import { JettonMinter, JettonMinterContent, jettonContentToCell, jettonMinterCon
 import { compile, NetworkProvider, UIProvider} from '@ton-community/blueprint';
 import { promptAddress, promptBool, promptUrl } from '../wrappers/ui-utils';
 
-const formatUrl = "https://github.com/ton-blockchain/TEPs/blob/master/text/0064-token-data-standard.md#nft-collection-metadata-example-offchain";
+const formatUrl = "https://github.com/ton-blockchain/TEPs/blob/master/text/0064-token-data-standard.md#jetton-metadata-example-offchain";
 const exampleContent = {
                           "name": "TON DAO",
                           "description": "Sample of TON DAO Jetton",
