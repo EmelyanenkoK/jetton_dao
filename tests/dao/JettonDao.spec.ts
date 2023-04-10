@@ -2,11 +2,14 @@ import { Blockchain, SandboxContract, TreasuryContract, Verbosity, internal } fr
 import { Cell, toNano, beginCell, storeMessageRelaxed, Address, SendMode, OpenedContract, AccountStorage } from 'ton-core';
 import { JettonWallet } from '../../wrappers/JettonWallet';
 import { JettonMinter } from '../../wrappers/JettonMinter';
+import { JettonMinterTests } from '../../wrappers/JettonMinterTests';
 import { Voting } from '../../wrappers/Voting';
 import { VoteKeeper } from '../../wrappers/VoteKeeper';
 import '@ton-community/test-utils';
 import { compile } from '@ton-community/blueprint';
 import { assertVoteChain, differentAddress, getRandom, getRandomExp, getRandomInt, getRandomPayload, getRandomTon, randomAddress, renewExp, voteCtx, ActiveWallet, ActiveJettonWallet, pickWinnerResult, sortBalanceResult } from "../utils";
+import { VotingTests } from '../../wrappers/VotingTests';
+import { VoteKeeperTests } from '../../wrappers/VoteKeeperTests';
 
 
 describe('DAO integrational', () => {
@@ -28,9 +31,12 @@ describe('DAO integrational', () => {
     let sortBalance:(w1:ActiveJettonWallet, w2:ActiveJettonWallet) => Promise<sortBalanceResult>;
     let pickWinner:(u1:ActiveWallet, u2:ActiveWallet) => Promise<pickWinnerResult>;
     let DAO:SandboxContract<JettonMinter>;
+    let testDAO:SandboxContract<JettonMinterTests>;
     let userWallet:(address:Address) => Promise<ActiveJettonWallet>;
     let votingContract:(voting_id:bigint) => Promise<SandboxContract<Voting>>;
+    let testVotingContract:(voting_id:bigint) => Promise<SandboxContract<VotingTests>>;
     let voteKeeperContract:(wallet:ActiveJettonWallet, voting_addr:Address) => Promise<SandboxContract<VoteKeeper>>;
+    let testKeeperContract:(wallet:ActiveJettonWallet, voting_addr:Address) => Promise<SandboxContract<VoteKeeperTests>>;
     let defaultContent:Cell;
     let expirationDate:bigint;
     let assertKeeper:(vAddr:Address, wallet:ActiveJettonWallet, votes:bigint) => void;
@@ -61,6 +67,7 @@ describe('DAO integrational', () => {
                        vote_keeper_code: vote_keeper_code
                      },
                      minter_code));
+        testDAO    = blockchain.openContract(JettonMinterTests.createFromAddress(DAO.address));
         userWallet = async (address:Address) => blockchain.openContract(
                           JettonWallet.createFromAddress(
                             await DAO.getWalletAddress(address)
@@ -71,8 +78,20 @@ describe('DAO integrational', () => {
                             await DAO.getVotingAddress(voting_id)
                           )
                      );
+        testVotingContract = async (voting_id:bigint) => blockchain.openContract(
+                          VotingTests.createFromAddress(
+                            await DAO.getVotingAddress(voting_id)
+                          )
+                     );
+
         voteKeeperContract = async (jw:ActiveJettonWallet, voting_addr:Address) => blockchain.openContract(
             VoteKeeper.createFromAddress(
+                await jw.getVoteKeeperAddress(voting_addr)
+            )
+        );
+
+        testKeeperContract = async (jw:ActiveJettonWallet, voting_addr:Address) => blockchain.openContract(
+            VoteKeeperTests.createFromAddress(
                 await jw.getVoteKeeperAddress(voting_addr)
             )
         );
@@ -236,7 +255,7 @@ describe('DAO integrational', () => {
             expect(createVoting.transactions).toHaveTransaction({
                 from: voting.address,
                 on: DAO.address,
-                body: JettonMinter.createVotingInitiated(votingId, expirationDate, user1.address)
+                body: JettonMinterTests.createVotingInitiated(votingId, expirationDate, user1.address)
             });
 
             // Confirmation message
@@ -269,10 +288,10 @@ describe('DAO integrational', () => {
     it('DAO should not allow voting initiated message from non-voting', async () =>{
         const voting   = await votingContract(votingId);
 
-        let   res = await DAO.sendVotingInitiated(user1.getSender(),
-                                                  votingId,
-                                                  expirationDate,
-                                                  user1.address);
+        let   res = await testDAO.sendVotingInitiated(user1.getSender(),
+                                                      votingId,
+                                                      expirationDate,
+                                                      user1.address);
         expect(res.transactions).toHaveTransaction({
             from: user1.address,
             on: DAO.address,
@@ -282,10 +301,10 @@ describe('DAO integrational', () => {
 
         const voteSender = blockchain.sender(voting.address);
 
-        res = await DAO.sendVotingInitiated(voteSender,
-                                            votingId + 1n, // Incorrect voting id
-                                            expirationDate,
-                                            user1.address);
+        res = await testDAO.sendVotingInitiated(voteSender,
+                                                votingId + 1n, // Incorrect voting id
+                                                expirationDate,
+                                                user1.address);
                                             //
         // Voting with different id would get different address
         expect(res.transactions).toHaveTransaction({
@@ -295,10 +314,10 @@ describe('DAO integrational', () => {
             exitCode: 78
         });
 
-        res = await DAO.sendVotingInitiated(voteSender,
-                                            votingId, // Correct id
-                                            expirationDate,
-                                            user1.address);
+        res = await testDAO.sendVotingInitiated(voteSender,
+                                                votingId, // Correct id
+                                                expirationDate,
+                                                user1.address);
         expect(res.transactions).toHaveTransaction({
             from: voting.address,
             on: DAO.address,
@@ -567,7 +586,7 @@ describe('DAO integrational', () => {
         const voting = await votingContract(votingId);
         const jetton = await userWallet(user1.address);
 
-        let res = await DAO.sendConfirmVoting(user1.getSender(), votingId, jetton.address)
+        let res = await testDAO.sendConfirmVoting(user1.getSender(), votingId, jetton.address)
         expect(res.transactions).toHaveTransaction({
             from: user1.address,
             on: DAO.address,
@@ -579,7 +598,7 @@ describe('DAO integrational', () => {
             on: jetton.address
         });
 
-        res = await DAO.sendConfirmVoting(blockchain.sender(voting.address), votingId, jetton.address)
+        res = await testDAO.sendConfirmVoting(blockchain.sender(voting.address), votingId, jetton.address)
 
         expect(res.transactions).toHaveTransaction({
             from:voting.address,
@@ -593,7 +612,7 @@ describe('DAO integrational', () => {
         const voting = await votingContract(votingId);
         const jetton = await userWallet(user1.address);
 
-        let res = await DAO.sendConfirmVoting(blockchain.sender(voting.address), votingId + 1n, user1.address)
+        let res = await testDAO.sendConfirmVoting(blockchain.sender(voting.address), votingId + 1n, user1.address)
         expect(res.transactions).toHaveTransaction({
             from: voting.address,
             on: DAO.address,
@@ -701,10 +720,10 @@ describe('DAO integrational', () => {
                                                          voteFor, voteConfirm);
 
 
-            const sendVoteBody = Voting.submitVotesMessage(user1.address,
-                                                           expirationDate,
-                                                           userBalance,
-                                                           voteFor, voteConfirm);
+            const sendVoteBody = VotingTests.submitVotesMessage(user1.address,
+                                                                expirationDate,
+                                                                userBalance,
+                                                                voteFor, voteConfirm);
             let keepR = await voteKeeperContract(user1JettonWallet, voting.address);
 
             expect(res.transactions).toHaveTransaction({
@@ -786,11 +805,11 @@ describe('DAO integrational', () => {
             expect(res.transactions).toHaveTransaction({
                 from: voting.address,
                 on: DAO.address,
-                body: JettonMinter.createExecuteVotingMessage(votingId,
-                                                              expirationDate,
-                                                              voteData.votedFor,
-                                                              voteData.votedAgainst,
-                                                              winMsg)
+                body: JettonMinterTests.createExecuteVotingMessage(votingId,
+                                                                   expirationDate,
+                                                                   voteData.votedFor,
+                                                                   voteData.votedAgainst,
+                                                                   winMsg)
             });
 
             voteData = await voting.getData();
@@ -856,12 +875,12 @@ describe('DAO integrational', () => {
                 from: voting.address,
                 on: DAO.address,
                 success: true,
-                body: JettonMinter.createExecuteVotingMessage(votingId,
-                                                              expirationDate,
-                                                              voteData.votedFor,
-                                                              voteData.votedAgainst,
-                                                              winMsg
-                                                             )
+                body: JettonMinterTests.createExecuteVotingMessage(votingId,
+                                                                   expirationDate,
+                                                                   voteData.votedFor,
+                                                                   voteData.votedAgainst,
+                                                                   winMsg
+                                                                  )
             });
 
             voteData = await voting.getData();
@@ -991,7 +1010,7 @@ describe('DAO integrational', () => {
             const payload  = getRandomPayload();
             const winMsg   = genMessage(user1.address, payload);
 
-            let voting = await votingContract(++votingId);
+            let voting = await testVotingContract(++votingId);
 
             const execAmount = getRandomTon(1, 10);
             const votingRes = await DAO.sendCreateVoting(user1.getSender(),
@@ -1044,7 +1063,7 @@ describe('DAO integrational', () => {
             const payload  = getRandomPayload();
             const winMsg   = genMessage(user1.address, payload);
 
-            let voting = await votingContract(++votingId);
+            let voting = await testVotingContract(++votingId);
 
             const execAmount = getRandomTon(1, 10);
             const votingRes = await DAO.sendCreateVoting(user1.getSender(),
@@ -1103,7 +1122,7 @@ describe('DAO integrational', () => {
             const payload  = getRandomPayload();
             const winMsg   = genMessage(user1.address, payload);
 
-            let voting = await votingContract(++votingId);
+            let voting = await testVotingContract(++votingId);
 
             const execAmount = getRandomTon(1, 10);
             const votingRes = await DAO.sendCreateVoting(user1.getSender(),
@@ -1153,11 +1172,11 @@ describe('DAO integrational', () => {
 
             const balance  = await user1JettonWallet.getTotalBalance();
             res            = await user1JettonWallet.sendVote(user1.getSender(), voting.address, expirationDate, true, false);
-            const keepR    = await voteKeeperContract(user1JettonWallet, voting.address);
-            const voteBody = VoteKeeper.requestVoteMessage(user1.address,
-                                                           expirationDate,
-                                                           balance,
-                                                           true, false);
+            const keepR    = await testKeeperContract(user1JettonWallet, voting.address);
+            const voteBody = VoteKeeperTests.requestVoteMessage(user1.address,
+                                                                expirationDate,
+                                                                balance,
+                                                                true, false);
 
             // Verify that same message from jetton wallet works fine
             expect(res.transactions).toHaveTransaction({
@@ -1219,11 +1238,11 @@ describe('DAO integrational', () => {
             const balance  = await user1JettonWallet.getTotalBalance();
             res            = await user1JettonWallet.sendVote(user1.getSender(), voting.address, expirationDate, true, false);
             await assertKeeper(voting.address, user1JettonWallet, balance);
-            const keepR    = await voteKeeperContract(user1JettonWallet, voting.address);
-            const voteBody = VoteKeeper.requestVoteMessage(user1.address,
-                                                           expirationDate,
-                                                           balance,
-                                                           true, false);
+            const keepR    = await testKeeperContract(user1JettonWallet, voting.address);
+            const voteBody = VoteKeeperTests.requestVoteMessage(user1.address,
+                                                                expirationDate,
+                                                                balance,
+                                                                true, false);
             // Let's pretend that same wallet send < balance vote, so there is noting to account for
             res = await keepR.sendRequestVote(blockchain.sender(user1JettonWallet.address),
                                               user1.address,
@@ -1254,12 +1273,12 @@ describe('DAO integrational', () => {
 
             blockchain.now = Number(expirationDate) + 1;
 
-            let res = await DAO.sendExecuteVotingMessage(user1.getSender(),
-                                                         votingId,
-                                                         expirationDate,
-                                                         supply,
-                                                         0n,
-                                                         winMsg);
+            let res = await testDAO.sendExecuteVotingMessage(user1.getSender(),
+                                                             votingId,
+                                                             expirationDate,
+                                                             supply,
+                                                             0n,
+                                                             winMsg);
 
             const proposalTrans = {
                 from: DAO.address,
@@ -1276,12 +1295,12 @@ describe('DAO integrational', () => {
 
             expect(res.transactions).not.toHaveTransaction(proposalTrans);
 
-            res = await DAO.sendExecuteVotingMessage(votingSender,
-                                                     votingId,
-                                                     expirationDate,
-                                                     supply,
-                                                     0n,
-                                                     winMsg);
+            res = await testDAO.sendExecuteVotingMessage(votingSender,
+                                                         votingId,
+                                                         expirationDate,
+                                                         supply,
+                                                         0n,
+                                                         winMsg);
             expect(res.transactions).toHaveTransaction({
                 from: voting.address,
                 on: DAO.address,
@@ -1301,12 +1320,12 @@ describe('DAO integrational', () => {
             const voting   = await votingContract(votingId);
             const votingSender = blockchain.sender(voting.address);
 
-            let res = await DAO.sendExecuteVotingMessage(votingSender,
-                                                         votingId,
-                                                         expirationDate,
-                                                         supply,
-                                                         0n,
-                                                         winMsg);
+            let res = await testDAO.sendExecuteVotingMessage(votingSender,
+                                                             votingId,
+                                                             expirationDate,
+                                                             supply,
+                                                             0n,
+                                                             winMsg);
 
             const proposalTrans = {
                 from: DAO.address,
@@ -1325,12 +1344,12 @@ describe('DAO integrational', () => {
 
             blockchain.now = Number(expirationDate) + 1;
 
-            res = await DAO.sendExecuteVotingMessage(votingSender,
-                                                     votingId,
-                                                     expirationDate,
-                                                     supply,
-                                                     0n,
-                                                     winMsg);
+            res = await testDAO.sendExecuteVotingMessage(votingSender,
+                                                         votingId,
+                                                         expirationDate,
+                                                         supply,
+                                                         0n,
+                                                         winMsg);
             expect(res.transactions).toHaveTransaction({
                 from: voting.address,
                 on: DAO.address,

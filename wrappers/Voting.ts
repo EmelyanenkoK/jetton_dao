@@ -49,6 +49,17 @@ export class Voting implements Contract {
         return new Voting(contractAddress(workchain, init), init);
     }
 
+    static endVotingMessage(query_id:bigint = 0n) {
+        return beginCell().storeUint(0x66173a45, 32).storeUint(query_id, 64).endCell();
+    }
+
+    async sendEndVoting(provider: ContractProvider, via: Sender, value:bigint=toNano('0.5')) {
+        await provider.internal(via, {
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            body: Voting.endVotingMessage(),
+            value
+        });
+    }
 /*
 (init, dao_address, voting_id, expiration_date, voting_type,
             proposal, wallet_code,
@@ -81,87 +92,6 @@ export class Voting implements Contract {
             executed,
             initiator,
         };
-    }
-
-    static initVoteMessage(expiration_date:bigint,
-                            voting_type:bigint,
-                            wallet_code:Cell,
-                            keeper_code:Cell,
-                            proposal:Cell,
-                            initiator:Address,
-                            query_id:bigint = 0n) {
-        return beginCell().storeUint(0x182d8ddd,32)
-                          .storeUint(query_id, 64)
-                          .storeUint(expiration_date, 48)
-                          .storeUint(voting_type, 64)
-                          .storeRef(wallet_code)
-                          .storeRef(keeper_code)
-                          .storeRef(proposal)
-                          .storeAddress(initiator)
-              .endCell();
-    }
-
-    async sendInitVoteMessage(provider:ContractProvider,
-                              via:Sender,
-                              expiration_date:bigint,
-                              voting_type:bigint,
-                              wallet_code:Cell,
-                              keeper_code:Cell,
-                              proposal:Cell,
-                              initiator:Address,
-                              value:bigint = toNano('0.1')) {
-        await provider.internal(via, {
-            sendMode: SendMode.PAY_GAS_SEPARATELY,
-            value,
-            body:Voting.initVoteMessage(expiration_date,
-                                        voting_type,
-                                        wallet_code,
-                                        keeper_code,
-                                        proposal,
-                                        initiator)
-        });
-    }
-    static submitVotesMessage(voter:Address,
-                              expiration_date:bigint,
-                              votes:bigint,
-                              vote_for:boolean,
-                              confirm_vote:boolean = false,
-                              query_id:bigint = 0n) {
-
-        return beginCell().storeUint(0x6edb1889, 32)
-                          .storeUint(query_id, 64)
-                          .storeAddress(voter)
-                          .storeUint(expiration_date, 48)
-                          .storeCoins(votes)
-                          .storeBit(vote_for)
-                          .storeBit(confirm_vote)
-               .endCell();
-    }
-
-    async sendSubmitVote(provider:ContractProvider,
-                         via:Sender,
-                         voter:Address,
-                         expiration_date:bigint,
-                         votes:bigint,
-                         vote_for:boolean,
-                         confirm_vote:boolean = false,
-                         value:bigint = toNano('0.1')) {
-        await provider.internal(via, {
-            sendMode: SendMode.PAY_GAS_SEPARATELY,
-            body: Voting.submitVotesMessage(voter, expiration_date, votes, vote_for, confirm_vote),
-            value
-        });
-    }
-    static endVotingMessage(query_id:bigint = 0n) {
-        return beginCell().storeUint(0x66173a45, 32).storeUint(query_id, 64).endCell();
-    }
-
-    async sendEndVoting(provider: ContractProvider, via: Sender, value:bigint=toNano('0.5')) {
-        await provider.internal(via, {
-            sendMode: SendMode.PAY_GAS_SEPARATELY,
-            body: Voting.endVotingMessage(),
-            value
-        });
     }
 
     static createProposalBody(minimal_execution_amount:bigint, forwardMsg:Cell, description: string = "Sample description") {

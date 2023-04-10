@@ -3,7 +3,7 @@ import { JettonMinter, JettonMinterContent, jettonContentToCell, jettonMinterCon
 import { compile, NetworkProvider, UIProvider} from '@ton-community/blueprint';
 import { promptAddress, promptBool, promptUrl } from '../wrappers/ui-utils';
 
-const formatUrl = "https://github.com/ton-blockchain/TEPs/blob/master/text/0064-token-data-standard.md#nft-collection-metadata-example-offchain";
+const formatUrl = "https://github.com/ton-blockchain/TEPs/blob/master/text/0064-token-data-standard.md#jetton-metadata-example-offchain";
 const exampleContent = {
                           "name": "TON DAO",
                           "description": "Sample of TON DAO Jetton",
@@ -16,9 +16,7 @@ const urlPrompt = 'Please specify url pointing to jetton metadata(json):';
 export async function run(provider: NetworkProvider) {
     const ui       = provider.ui();
     const sender   = provider.sender();
-    if(sender.address === undefined)
-        throw("Can't get sender address");
-    const adminPrompt = `Please specify admin address(${sender.address} as default)`;
+    const adminPrompt = 'Please specify admin address:';
     ui.write(`Jetton deployer\nCurrent deployer onli supports off-chain format:${formatUrl}`);
 
     let admin      = await promptAddress(adminPrompt, ui, sender.address);

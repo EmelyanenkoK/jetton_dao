@@ -132,7 +132,8 @@ const mintAction = async (provider:NetworkProvider, ui:UIProvider) => {
 
     do {
         retry = false;
-        mintAddress = await promptAddress(`Please specify address to mint to(default:${sender.address}):`, ui, sender.address);
+        const fallbackAddr = sender.address ?? await minterContract.getAdminAddress();
+        mintAddress = await promptAddress('Please specify address to mint to', ui, fallbackAddr);
         mintAmount  = await promptAmount('Please provide mint amount in decimal form:', ui);
         ui.write(`Mint ${mintAmount} tokens to ${mintAddress}\n`);
         retry = !(await promptBool('Is it ok?(yes/no)', ['yes', 'no'], ui));
@@ -173,8 +174,7 @@ const mintAction = async (provider:NetworkProvider, ui:UIProvider) => {
 export async function run(provider: NetworkProvider) {
     const ui = provider.ui();
     const sender = provider.sender();
-    if(sender.address === undefined)
-        throw("Failed to get sender address");
+    const hasSender  = sender.address !== undefined;
     const api    = provider.api()
     const minterCode = await compile('JettonMinter');
     const votingCode = await compile('Voting');
@@ -201,7 +201,7 @@ export async function run(provider: NetworkProvider) {
     } while(retry);
 
     minterContract = provider.open(JettonMinter.createFromAddress(minterAddress));
-    const isAdmin  = (await minterContract.getAdminAddress()).equals(sender.address);
+    const isAdmin  = hasSender ? (await minterContract.getAdminAddress()).equals(sender.address) : true;
     let actionList:string[];
     if(isAdmin) {
         actionList = [...adminActions, ...userActions];

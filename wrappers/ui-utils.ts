@@ -17,9 +17,9 @@ export const promptBool    = async (prompt:string, options:[string, string], ui:
 }
 
 export const promptAddress = async (prompt:string, provider:UIProvider, fallback?:Address) => {
-
+    let promptFinal = fallback ? prompt.replace(/:$/,'') + `(default:${fallback}):` : prompt ;
     do {
-        let testAddr = (await provider.input(prompt)).replace(/^\s+|\s+$/g,'');
+        let testAddr = (await provider.input(promptFinal)).replace(/^\s+|\s+$/g,'');
         try{
             return testAddr == "" && fallback ? fallback : Address.parse(testAddr);
         }
@@ -32,13 +32,15 @@ export const promptAddress = async (prompt:string, provider:UIProvider, fallback
 };
 
 export const promptAmount = async (prompt:string, provider:UIProvider) => {
+    let resAmount:number;
     do {
         let inputAmount = await provider.input(prompt);
-        try {
-            return parseFloat(inputAmount).toFixed(9);
-        }
-        catch(e) {
+        resAmount = Number(inputAmount);
+        if(isNaN(resAmount)) {
             provider.write("Failed to convert " + inputAmount + " to float number");
+        }
+        else {
+            return resAmount.toFixed(9);
         }
     } while(true);
 }
