@@ -1,0 +1,19 @@
+#include "params.func";
+#include "jetton-utils.func";
+
+{-
+  addr_std$10 anycast:(Maybe Anycast)
+   workchain_id:int8 address:bits256  = MsgAddressInt;
+-}
+slice calc_address(cell state_init) inline {
+    return begin_cell().store_uint(4, 3) ;; 0x100 : $10 + anycast (Maybe = 0)
+            .store_int(workchain, 8)
+            .store_uint(
+                    cell_hash(state_init), 256)
+            .end_cell()
+            .begin_parse();
+}
+
+(slice) calc_user_wallet (slice owner, slice jetton_master, cell code, cell vote_keeper_code) inline {
+    return calc_address(calculate_jetton_wallet_state_init(owner, jetton_master, code, vote_keeper_code));
+}

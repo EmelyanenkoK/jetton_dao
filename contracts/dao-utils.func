@@ -1,4 +1,4 @@
-#include "jetton-utils.func";
+#include "jetton-wallet-auth.func";
 
 {-
    uninit$0 jetton_master:MsgAddressInt voting_id:uint64 = Storage;
