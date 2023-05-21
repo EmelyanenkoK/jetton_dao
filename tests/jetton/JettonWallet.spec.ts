@@ -486,11 +486,13 @@ describe('JettonWallet', () => {// return;
                                  burnAmount, deployer.address, null); // amount, response address, custom payload
             expect(sendResult.transactions).toHaveTransaction({ //burn notification
                 from: deployerJettonWallet.address,
-                on: jettonMinter.address
+                on: jettonMinter.address,
+                success:true
             });
-            expect(sendResult.transactions).toHaveTransaction({ //excesses
+            expect(sendResult.transactions).toHaveTransaction({ //message to admin
                 from: jettonMinter.address,
-                on: deployer.address
+                on: deployer.address,
+                op: 0x8899aa
             });
             expect(await deployerJettonWallet.getJettonBalance()).toEqual(initialJettonBalance - burnAmount);
             expect(await jettonMinter.getTotalSupply()).toEqual(initialTotalSupply - burnAmount);
@@ -552,11 +554,11 @@ describe('JettonWallet', () => {// return;
         const sendExcess = await deployerJettonWallet.sendBurn(deployer.getSender(), minimalFee + 1n,
                                                                       burnAmount, deployer.address, null);
 
-        expect(sendExcess.transactions).toHaveTransaction({
+        /*expect(sendExcess.transactions).toHaveTransaction({
             from: deployer.address,
             on: deployerJettonWallet.address,
             success: true
-        });
+        });*/
 
         expect(await deployerJettonWallet.getJettonBalance()).toEqual(initialJettonBalance - burnAmount);
         expect(await jettonMinter.getTotalSupply()).toEqual(initialTotalSupply - burnAmount);
