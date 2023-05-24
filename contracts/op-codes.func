@@ -39,7 +39,7 @@ const int op::take_wallet_address = 0xd1735400;
 const int op::request_vote = 0x2bd63704;
 
 ;; Admin
-const int op::jettons_burned = 0x8899aa;
+const int op::jettons_burned = 0x319b0cdc;
 
 
 (slice, (int)) ~load_op(slice s) inline { return s.load_uint(32); }
