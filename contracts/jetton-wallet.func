@@ -14,6 +14,7 @@ const int min_tons_for_storage = 10000000; ;;ONE_TON / 100;
 ;; b) jetton-wallet code become larger or smalle
 ;; c) global fee changes / different workchain
 const int gas_consumption = 19500000;
+const int burn_notification = 0; ;;TODO
 
 {-
   Storage
@@ -210,11 +211,11 @@ const int gas_consumption = 19500000;
   int jetton_amount = in_msg_body~load_coins();
   slice response_address = in_msg_body~load_msg_addr();
   ;; ignore custom payload
-  ;; slice custom_payload = in_msg_body~load_dict();
+  cell custom_payload = in_msg_body~load_dict();
   balance -= jetton_amount;
   throw_unless(error::unauthorized_transfer, equal_slice_bits(owner_address, sender_address));
   throw_unless(error::not_enough_jettons, balance >= 0);
-  throw_unless(error::burn_fee_not_matched, msg_value > fwd_fee + 2 * gas_consumption);
+  throw_unless(error::burn_fee_not_matched, msg_value > fwd_fee + 2 * gas_consumption + burn_notification);
 
   var msg_body = begin_cell()
       .store_op(op::burn_notification)
@@ -222,6 +223,7 @@ const int gas_consumption = 19500000;
       .store_coins(jetton_amount)
       .store_slice(owner_address)
       .store_slice(response_address)
+      .store_maybe_ref(custom_payload)
       .end_cell();
 
   var msg = begin_cell()

@@ -575,6 +575,7 @@ describe('JettonWallet', () => {// return;
                 .storeCoins(amount)
                 .storeAddress(addr)
                 .storeAddress(deployer.address)
+                .storeInt(0n, 1) // no custom_payloadn
                .endCell();
         }
 
