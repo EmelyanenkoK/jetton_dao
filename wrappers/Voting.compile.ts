@@ -1,4 +1,6 @@
 import { CompilerConfig } from '@ton-community/blueprint';
+import { writeFile, mkdir } from 'fs/promises';
+import path from 'path';
 
 export const compile: CompilerConfig = {
     lang: 'func',

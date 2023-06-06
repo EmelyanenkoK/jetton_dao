@@ -121,7 +121,7 @@ const int min_storage_fee = 30000000;
     }
     if (op == op::submit_votes) {
         slice voter = in_msg_body~load_msg_addr();
-        slice voter_wallet = calc_user_wallet(voter, dao_address, wallet_code, vote_keeper_code);
+        slice voter_wallet = calc_user_wallet(voter, dao_address, wallet_code);
         slice vote_keeper = calculate_vote_keeper_address(voter_wallet, my_address(), vote_keeper_code);
         throw_unless(error::unauthorized_vote,
                 equal_slice_bits(sender_address, vote_keeper));

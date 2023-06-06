@@ -71,8 +71,7 @@ int is_proposal_accepted(int voted_for, int voted_against, int total_votes) inli
     cell state_init = calculate_jetton_wallet_state_init(
                         to_address,
                         my_address(),
-                        jetton_wallet_code,
-                        vote_keeper_code);
+                        jetton_wallet_code);
     slice to_wallet_address = calc_address(state_init);
     var msg = begin_cell()
             .store_msg_flag(msg_flag::bounceable)
@@ -133,7 +132,7 @@ int is_proposal_accepted(int voted_for, int voted_against, int total_votes) inli
         int jetton_amount = in_msg_body~load_coins();
         slice from_address = in_msg_body~load_msg_addr();
         throw_unless(error::unauthorized_burn_request,
-                equal_slice_bits(calc_user_wallet(from_address, my_address(), jetton_wallet_code, vote_keeper_code), sender_address)
+                equal_slice_bits(calc_user_wallet(from_address, my_address(), jetton_wallet_code), sender_address)
         );
         save_data(total_supply - jetton_amount, admin_address,
                 content, jetton_wallet_code,
@@ -188,7 +187,7 @@ int is_proposal_accepted(int voted_for, int voted_against, int total_votes) inli
                 .store_query_id(query_id);
 
         if (is_resolvable?(owner_address)) {
-            msg = msg.store_slice(calc_user_wallet(owner_address, my_address(), jetton_wallet_code, vote_keeper_code));
+            msg = msg.store_slice(calc_user_wallet(owner_address, my_address(), jetton_wallet_code));
         } else {
             msg = msg.store_uint(0, 2); ;; addr_none
         }
@@ -295,7 +294,7 @@ int is_proposal_accepted(int voted_for, int voted_against, int total_votes) inli
         throw_unless(error::unauthorized_vote_execution, equal_slice_bits(sender_address, voting_address));
         slice voter = in_msg_body~load_msg_addr();
         in_msg_body.end_parse();
-        slice voter_wallet = calc_user_wallet(voter, my_address(), jetton_wallet_code, vote_keeper_code);
+        slice voter_wallet = calc_user_wallet(voter, my_address(), jetton_wallet_code);
         ;;confirm_voting query_id:uint64 = InternalMsgBody; // DAO -> voter_wallet
         var msg = begin_cell()
                 .store_msg_flag(msg_flag::bounceable)
@@ -320,7 +319,7 @@ slice get_wallet_address(slice owner_address) method_id {
     (int total_supply, slice admin_address,
             cell content, cell jetton_wallet_code,
             int voting_id, cell voting_code, cell vote_keeper_code) = load_data();
-    return calc_user_wallet(owner_address, my_address(), jetton_wallet_code, vote_keeper_code);
+    return calc_user_wallet(owner_address, my_address(), jetton_wallet_code);
 }
 
 slice get_voting_address(int voting_id) method_id {
