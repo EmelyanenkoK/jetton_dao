@@ -19,7 +19,7 @@ const int provide_voting_data_gas_consumption = 20000000;
 ;;           voting_id:uint64 voting_code:^Cell
 ;;           = Storage;
 ;;
-(int, slice, cell, cell, int, cell, cell) load_data() inline {
+(int, slice, cell, cell, int, cell) load_data() inline {
     slice ds = get_data().begin_parse();
     return (
             ds~load_coins(), ;; total_supply
@@ -27,14 +27,13 @@ const int provide_voting_data_gas_consumption = 20000000;
             ds~load_ref(), ;; content
             ds~load_ref(), ;; jetton_wallet_code
             ds~load_uint(64), ;; voting_id
-            ds~load_ref(), ;; voting_code
-            ds~load_ref() ;; vote_keeper_code
+            ds~load_ref() ;; voting_code
     );
 }
 
 () save_data(int total_supply, slice admin_address,
              cell content, cell jetton_wallet_code,
-             int voting_id, cell voting_code, cell vote_keeper_code) impure inline {
+             int voting_id, cell voting_code) impure inline {
     set_data(begin_cell()
             .store_coins(total_supply)
             .store_slice(admin_address)
@@ -42,12 +41,11 @@ const int provide_voting_data_gas_consumption = 20000000;
             .store_ref(jetton_wallet_code)
             .store_uint(voting_id, 64)
             .store_ref(voting_code)
-            .store_ref(vote_keeper_code)
             .end_cell()
     );
 }
 
-() mint_tokens(slice to_address, cell jetton_wallet_code, cell vote_keeper_code, int amount, cell master_msg) impure {
+() mint_tokens(slice to_address, cell jetton_wallet_code, int amount, cell master_msg) impure {
     cell state_init = calculate_jetton_wallet_state_init(
                         to_address,
                         my_address(),
@@ -83,7 +81,7 @@ const int provide_voting_data_gas_consumption = 20000000;
 
     (int total_supply, slice admin_address,
      cell content, cell jetton_wallet_code,
-     int voting_id, cell voting_code, cell vote_keeper_code) = load_data();
+     int voting_id, cell voting_code) = load_data();
 
     if (op == op::mint) {
         throw_unless(error::unauthorized_mint_request, equal_slice_bits(sender_address, admin_address));
@@ -101,10 +99,10 @@ const int provide_voting_data_gas_consumption = 20000000;
                 .store_coins(forward_ton_amount) ;; forward_amount, 4 bit if zero
                 .store_uint(0, 1) ;; no forward_payload, 1 bit
                 .end_cell();
-        mint_tokens(to_address, jetton_wallet_code, vote_keeper_code, total_ton_amount, mint_request);
+        mint_tokens(to_address, jetton_wallet_code, total_ton_amount, mint_request);
         save_data(total_supply + jetton_amount, admin_address,
                   content, jetton_wallet_code,
-                  voting_id, voting_code, vote_keeper_code);
+                  voting_id, voting_code);
         return ();
     }
 
@@ -116,7 +114,7 @@ const int provide_voting_data_gas_consumption = 20000000;
         );
         save_data(total_supply - jetton_amount, admin_address,
                 content, jetton_wallet_code,
-                voting_id, voting_code, vote_keeper_code);
+                voting_id, voting_code);
         slice response_address = in_msg_body~load_msg_addr();
         if (response_address.preload_uint(2) != 0) {
             var msg = begin_cell()
@@ -163,7 +161,7 @@ const int provide_voting_data_gas_consumption = 20000000;
         slice new_admin_address = in_msg_body~load_msg_addr();
         save_data(total_supply, new_admin_address,
                 content, jetton_wallet_code,
-                voting_id, voting_code, vote_keeper_code);
+                voting_id, voting_code);
         return ();
     }
 
@@ -171,7 +169,7 @@ const int provide_voting_data_gas_consumption = 20000000;
         throw_unless(error::unauthorized_change_content_request, equal_slice_bits(sender_address, admin_address));
         save_data(total_supply, admin_address,
                 in_msg_body~load_ref(), jetton_wallet_code,
-                voting_id, voting_code, vote_keeper_code);
+                voting_id, voting_code);
         return ();
     }
 
@@ -187,7 +185,7 @@ const int provide_voting_data_gas_consumption = 20000000;
         }
         save_data(total_supply, admin_address,
                 content, jetton_wallet_code,
-                voting_id, voting_code, vote_keeper_code);
+                voting_id, voting_code);
         return ();
     }
 
@@ -204,7 +202,6 @@ const int provide_voting_data_gas_consumption = 20000000;
                 .store_uint(expiration_date, 48)
                 .store_uint(voting_type, 64)
                 .store_ref(jetton_wallet_code)
-                .store_ref(vote_keeper_code)
                 .store_ref(proposal)
                 .store_slice(sender_address)
                 .end_cell();
@@ -217,7 +214,7 @@ const int provide_voting_data_gas_consumption = 20000000;
         voting_id += 1;
         save_data(total_supply, admin_address,
                 content, jetton_wallet_code,
-                voting_id, voting_code, vote_keeper_code);
+                voting_id, voting_code);
         return ();
     }
     if(op == op::voting_initiated) {
@@ -277,26 +274,26 @@ const int provide_voting_data_gas_consumption = 20000000;
 (int, int, slice, cell, cell) get_jetton_data() method_id {
     (int total_supply, slice admin_address,
             cell content, cell jetton_wallet_code,
-            int voting_id, cell voting_code, cell vote_keeper_code) = load_data();
+            int voting_id, cell voting_code) = load_data();
     return (total_supply, -1, admin_address, content, jetton_wallet_code);
 }
 
 slice get_wallet_address(slice owner_address) method_id {
     (int total_supply, slice admin_address,
             cell content, cell jetton_wallet_code,
-            int voting_id, cell voting_code, cell vote_keeper_code) = load_data();
+            int voting_id, cell voting_code) = load_data();
     return calc_user_wallet(owner_address, my_address(), jetton_wallet_code);
 }
 
 slice get_voting_address(int voting_id) method_id {
     (int total_supply, slice admin_address,
             cell content, cell jetton_wallet_code,
-            _, cell voting_code, cell vote_keeper_code) = load_data();
+            _, cell voting_code) = load_data();
     return calculate_dao_voting_address(my_address(), voting_id, voting_code);
 }
 cell get_voting_code() method_id {
     (int total_supply, slice admin_address,
             cell content, cell jetton_wallet_code,
-            int voting_id, cell voting_code, cell vote_keeper_code) = load_data();
+            int voting_id, cell voting_code) = load_data();
     return voting_code;
 }

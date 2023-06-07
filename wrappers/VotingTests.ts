@@ -20,7 +20,6 @@ export class VotingTests extends Voting {
     static initVoteMessage(expiration_date:bigint,
                             voting_type:bigint,
                             wallet_code:Cell,
-                            keeper_code:Cell,
                             proposal:Cell,
                             initiator:Address,
                             query_id:bigint = 0n) {
@@ -29,7 +28,6 @@ export class VotingTests extends Voting {
                           .storeUint(expiration_date, 48)
                           .storeUint(voting_type, 64)
                           .storeRef(wallet_code)
-                          .storeRef(keeper_code)
                           .storeRef(proposal)
                           .storeAddress(initiator)
               .endCell();
@@ -40,7 +38,6 @@ export class VotingTests extends Voting {
                               expiration_date:bigint,
                               voting_type:bigint,
                               wallet_code:Cell,
-                              keeper_code:Cell,
                               proposal:Cell,
                               initiator:Address,
                               value:bigint = toNano('0.1')) {
@@ -50,7 +47,6 @@ export class VotingTests extends Voting {
             body:VotingTests.initVoteMessage(expiration_date,
                                              voting_type,
                                              wallet_code,
-                                             keeper_code,
                                              proposal,
                                              initiator)
         });
