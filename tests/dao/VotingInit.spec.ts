@@ -44,7 +44,6 @@ describe('Voting init unit tests', () => {
         const res = await voting.sendInitVoteMessage(master.getSender(),
                                                      expirationDate,
                                                      votingType,
-                                                     jwallet_code,
                                                      proposal,
                                                      userWallet.address);
         expect(res.transactions).toHaveTransaction({
@@ -80,7 +79,6 @@ describe('Voting init unit tests', () => {
         let   res = await voting.sendInitVoteMessage(master.getSender(),
                                                      expirationDate,
                                                      votingType,
-                                                     jwallet_code,
                                                      proposal,
                                                      userWallet.address);
         expect(res.transactions).toHaveTransaction({
@@ -96,7 +94,6 @@ describe('Voting init unit tests', () => {
         res = await voting.sendInitVoteMessage(master.getSender(),
                                                expirationDate + delta,
                                                votingType + delta,
-                                               jwallet_code,
                                                proposal,
                                                userWallet.address);
         
@@ -129,7 +126,6 @@ describe('Voting init unit tests', () => {
         let   res = await voting.sendInitVoteMessage(userWallet.getSender(),
                                                      expirationDate,
                                                      votingType,
-                                                     jwallet_code,
                                                      proposal,
                                                      userWallet.address);
  

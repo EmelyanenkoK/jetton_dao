@@ -5,17 +5,18 @@ export type JettonMinterContent = {
     type:0|1,
     uri:string
 };
-export type JettonMinterConfig = {admin: Address; content: Cell; wallet_code: Cell, voting_code: Cell, vote_keeper_code: Cell};
+export type JettonMinterConfig = { admin: Address;
+                                   content: Cell;
+                                   voting_code: Cell
+                                   };
 
 export function jettonMinterConfigToCell(config: JettonMinterConfig): Cell {
     return beginCell()
                       .storeCoins(0)
                       .storeAddress(config.admin)
                       .storeRef(config.content)
-                      .storeRef(config.wallet_code)
                       .storeUint(0, 64)
                       .storeRef(config.voting_code)
-                      .storeRef(config.vote_keeper_code)
            .endCell();
 }
 

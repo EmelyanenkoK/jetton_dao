@@ -53,8 +53,6 @@ describe('JettonWallet', () => {// return;
                      {
                        admin: deployer.address,
                        content: defaultContent,
-                       wallet_code: jwallet_code,
-                       vote_keeper_code: vote_keeper_code,
                        voting_code: voting_code
                      },
                      minter_code));

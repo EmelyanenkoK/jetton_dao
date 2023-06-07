@@ -14,10 +14,8 @@ import { VoteKeeperTests } from '../../wrappers/VoteKeeperTests';
 
 describe('DAO integrational', () => {
     jest.setTimeout(15000);
-    let jwallet_code = new Cell();
     let minter_code = new Cell();
     let voting_code = new Cell();
-    let vote_keeper_code = new Cell();
     let minter_update = new Cell();
     let blockchain: Blockchain;
     let user1:ActiveWallet;
@@ -43,10 +41,8 @@ describe('DAO integrational', () => {
     let votingId:bigint;
 
     beforeAll(async () => {
-        jwallet_code = await compile('JettonWallet');
         minter_code = await compile('JettonMinter');
         voting_code = await compile('Voting');
-        vote_keeper_code = await compile('VoteKeeper');
         minter_update    = await compile('MinterUpdate');
         blockchain = await Blockchain.create();
         user1 = await blockchain.treasury('user1');
@@ -62,9 +58,7 @@ describe('DAO integrational', () => {
                      {
                        admin: user1.address,
                        content: defaultContent,
-                       wallet_code: jwallet_code,
                        voting_code: voting_code,
-                       vote_keeper_code: vote_keeper_code
                      },
                      minter_code));
         testDAO    = blockchain.openContract(JettonMinterTests.createFromAddress(DAO.address));

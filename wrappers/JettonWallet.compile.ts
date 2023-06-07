@@ -15,6 +15,6 @@ export const compile: CompilerConfig = {
     postCompileHook: async (code) => {
         const auto = path.join(__dirname, '..', 'contracts', 'auto');
         await mkdir(auto, { recursive: true });
-        await writeFile(path.join(auto, 'wallet-code.func'), `cell wallet_code() asm "B{${code.toBoc().toString('hex')}} B>boc PUSHREF";`);
+        await writeFile(path.join(auto, 'jetton-wallet-code.func'), `cell jetton_wallet_code() asm "B{${code.toBoc().toString('hex')}} B>boc PUSHREF";`);
     }
 };

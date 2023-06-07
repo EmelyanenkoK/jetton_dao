@@ -7,9 +7,11 @@ export const compile: CompilerConfig = {
     lang: 'func',
     preCompileHook: async () => {
         await compileFunc('VoteKeeper');
+        await compileFunc('JettonWallet');
     },
 
     targets: ['contracts/auto/vote-keeper-code.func',
+              'contracts/auto/jetton-wallet-code.func',
               'contracts/voting.func'],
     postCompileHook: async (code) => {
         const auto = path.join(__dirname, '..', 'contracts', 'auto');
