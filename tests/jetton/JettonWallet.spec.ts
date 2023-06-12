@@ -7,8 +7,8 @@ import { VoteKeeper } from '../../wrappers/VoteKeeper';
 import '@ton-community/test-utils';
 import { compile } from '@ton-community/blueprint';
 import { getRandom, getRandomExp, getRandomInt, getRandomPayload, getRandomTon, randomAddress, renewExp, ActiveWallet, ActiveJettonWallet, commonMsg } from "../utils";
-import { exists } from 'fs';
 import { JettonWalletTests } from '../../wrappers/JettonWalletTests';
+import { Op } from "../../Ops";
 
 /*
    These tests check compliance with the TEP-74 and TEP-89,
@@ -492,7 +492,7 @@ describe('JettonWallet', () => {// return;
             expect(sendResult.transactions).toHaveTransaction({ //message to admin
                 from: jettonMinter.address,
                 on: deployer.address,
-                op: 0x8899aa
+                op: Op.admin.jettons_burned
             });
             expect(await deployerJettonWallet.getJettonBalance()).toEqual(initialJettonBalance - burnAmount);
             expect(await jettonMinter.getTotalSupply()).toEqual(initialTotalSupply - burnAmount);

@@ -1,4 +1,5 @@
 import { Address, Cell, beginCell, Sender, ContractProvider, SendMode, toNano, contractAddress } from "ton-core";
+import { Op } from "../Ops";
 import { JettonMinter, JettonMinterConfig, jettonMinterConfigToCell } from "./JettonMinter";
 export class JettonMinterTests extends JettonMinter {
     constructor (readonly address: Address, readonly init?: { code: Cell; data: Cell }) {
@@ -21,7 +22,7 @@ export class JettonMinterTests extends JettonMinter {
                                       voted_against:bigint,
                                       payload: Cell,
                                       query_id:bigint = 0n) {
-        return beginCell().storeUint(0x4f0f7510, 32)
+        return beginCell().storeUint(Op.minter.execute_vote_result, 32)
                           .storeUint(query_id, 64)
                           .storeUint(voting_id, 64)
                           .storeUint(expiration_date, 48)
@@ -53,7 +54,7 @@ export class JettonMinterTests extends JettonMinter {
     }
 
     static createConfirmVotingMessage(voting_id:bigint, voter:Address, query_id:bigint = 0n) {
-        return beginCell().storeUint(0x0222fdcb, 32)
+        return beginCell().storeUint(Op.minter.request_confirm_voting, 32)
                           .storeUint(query_id, 64)
                           .storeUint(voting_id, 64)
                           .storeAddress(voter)
@@ -70,7 +71,7 @@ export class JettonMinterTests extends JettonMinter {
     }
 
     static createVotingInitiated(voting_id:bigint, expiration_date:bigint, initiator:Address, query_id:bigint = 0n){
-        return beginCell().storeUint(0x8e2abb23, 32)
+        return beginCell().storeUint(Op.minter.voting_initiated, 32)
                           .storeUint(query_id, 64)
                           .storeUint(voting_id, 64)
                           .storeUint(expiration_date, 48)
