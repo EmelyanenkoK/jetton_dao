@@ -478,7 +478,7 @@ describe('JettonWallet', () => {// return;
     });
 
     it('wallet owner should be able to burn jettons', async () => {
-           const deployerJettonWallet = await userWallet(deployer.address);
+            const deployerJettonWallet = await userWallet(deployer.address);
             let initialJettonBalance = await deployerJettonWallet.getJettonBalance();
             let initialTotalSupply = await jettonMinter.getTotalSupply();
             let burnAmount = toNano('0.01');
@@ -496,6 +496,39 @@ describe('JettonWallet', () => {// return;
             });
             expect(await deployerJettonWallet.getJettonBalance()).toEqual(initialJettonBalance - burnAmount);
             expect(await jettonMinter.getTotalSupply()).toEqual(initialTotalSupply - burnAmount);
+
+    });
+
+    it('wallet owner should be able to burn jettons with cusom payload', async () => {
+            const deployerJettonWallet = await userWallet(deployer.address);
+            let initialJettonBalance = await deployerJettonWallet.getJettonBalance();
+            let initialTotalSupply = await jettonMinter.getTotalSupply();
+            let burnAmount = toNano('0.01');
+            const customPaylaod = beginCell().storeCoins(getRandomTon(1000, 2000)).endCell();
+            const sendResult = await deployerJettonWallet.sendBurn(deployer.getSender(), toNano('0.1'), // ton amount
+                                 burnAmount, deployer.address, customPaylaod); // amount, response address, custom payload
+            expect(sendResult.transactions).toHaveTransaction({ //burn notification
+                from: deployerJettonWallet.address,
+                on: jettonMinter.address,
+                op: Op.burn_notification,
+                body: (x: Cell) => {
+                    if( x.refs.length == 1) {
+                        const payload = x.beginParse().preloadRef();
+                        expect(payload).toEqualCell(customPaylaod);
+                        return true;
+                    }
+                    return false;
+                },
+                success:true
+            });
+            expect(sendResult.transactions).toHaveTransaction({ //message to admin
+                from: jettonMinter.address,
+                on: deployer.address,
+                op: Op.admin.jettons_burned
+            });
+            expect(await deployerJettonWallet.getJettonBalance()).toEqual(initialJettonBalance - burnAmount);
+            expect(await jettonMinter.getTotalSupply()).toEqual(initialTotalSupply - burnAmount);
+
 
     });
 
