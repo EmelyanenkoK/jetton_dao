@@ -1,4 +1,5 @@
 import { Address, beginCell, Cell, Contract, contractAddress, ContractProvider, Sender, SendMode, toNano, internal, storeMessageRelaxed} from 'ton-core';
+import { Op } from '../Ops';
 import { Voting } from './Voting';
 
 export type JettonMinterContent = {
@@ -49,7 +50,7 @@ export class JettonMinter implements Contract {
     }
 
     static mintMessage(to: Address, jetton_amount: bigint, forward_ton_amount: bigint, total_ton_amount: bigint,) {
-        return beginCell().storeUint(0x1674b0a0, 32).storeUint(0, 64) // op, queryId
+        return beginCell().storeUint(Op.minter.mint, 32).storeUint(0, 64) // op, queryId
                           .storeAddress(to).storeCoins(jetton_amount)
                           .storeCoins(forward_ton_amount).storeCoins(total_ton_amount)
                .endCell();
@@ -65,7 +66,7 @@ export class JettonMinter implements Contract {
     /* provide_wallet_address#2c76b973 query_id:uint64 owner_address:MsgAddress include_address:Bool = InternalMsgBody;
     */
     static discoveryMessage(owner: Address, include_address: boolean) {
-        return beginCell().storeUint(0x2c76b973, 32).storeUint(0, 64) // op, queryId
+        return beginCell().storeUint(Op.minter.provide_wallet_address, 32).storeUint(0, 64) // op, queryId
                           .storeAddress(owner).storeBit(include_address)
                .endCell();
     }
@@ -79,7 +80,7 @@ export class JettonMinter implements Contract {
     }
 
     static changeAdminMessage(newOwner: Address) {
-        return beginCell().storeUint(0x4840664f, 32).storeUint(0, 64) // op, queryId
+        return beginCell().storeUint(Op.minter.change_admin, 32).storeUint(0, 64) // op, queryId
                           .storeAddress(newOwner)
                .endCell();
     }
@@ -92,7 +93,7 @@ export class JettonMinter implements Contract {
         });
     }
     static changeContentMessage(content: Cell) {
-        return beginCell().storeUint(0x5773d1f5, 32).storeUint(0, 64) // op, queryId
+        return beginCell().storeUint(Op.minter.change_content, 32).storeUint(0, 64) // op, queryId
                           .storeRef(content)
                .endCell();
     }
@@ -113,7 +114,7 @@ export class JettonMinter implements Contract {
         //storeMessageRelaxed(internal({to:destination, value:amount, body:payload}))(forwardMsgBuilder);
         let forwardMsg = forwardMsgBuilder.endCell();
         let proposal   = Voting.createProposalBody(minimal_execution_amount, payload, description);
-        return beginCell().storeUint(0x1c7f9a1a, 32).storeUint(0, 64) // op, queryId
+        return beginCell().storeUint(Op.minter.create_voting, 32).storeUint(0, 64) // op, queryId
                           .storeUint(expiration_date, 48)
                           .storeRef(proposal)
                .endCell();
@@ -130,7 +131,7 @@ export class JettonMinter implements Contract {
         });
     }
     static createCodeUpgradeMessage(minter_code: Cell | null, voting_code: Cell | null, query_id:bigint = 0n) {
-        return beginCell().storeUint(0x34aea60d, 32)
+        return beginCell().storeUint(Op.minter.upgrade_code, 32)
                           .storeUint(query_id, 64)
                           .storeMaybeRef(minter_code)
                           .storeMaybeRef(voting_code)
