@@ -39,6 +39,7 @@ describe('DAO integrational', () => {
     let expirationDate:bigint;
     let assertKeeper:(vAddr:Address, wallet:ActiveJettonWallet, votes:bigint) => void;
     let votingId:bigint;
+    let defaultVotingType = 0n;
 
     beforeAll(async () => {
         minter_code = await compile('JettonMinter');
@@ -801,6 +802,7 @@ describe('DAO integrational', () => {
                 on: DAO.address,
                 body: JettonMinterTests.createExecuteVotingMessage(votingId,
                                                                    expirationDate,
+                                                                   defaultVotingType,
                                                                    voteData.votedFor,
                                                                    voteData.votedAgainst,
                                                                    winMsg)
@@ -871,6 +873,7 @@ describe('DAO integrational', () => {
                 success: true,
                 body: JettonMinterTests.createExecuteVotingMessage(votingId,
                                                                    expirationDate,
+                                                                   defaultVotingType,
                                                                    voteData.votedFor,
                                                                    voteData.votedAgainst,
                                                                    winMsg
@@ -1270,6 +1273,7 @@ describe('DAO integrational', () => {
             let res = await testDAO.sendExecuteVotingMessage(user1.getSender(),
                                                              votingId,
                                                              expirationDate,
+                                                             defaultVotingType,
                                                              supply,
                                                              0n,
                                                              winMsg);
@@ -1292,6 +1296,7 @@ describe('DAO integrational', () => {
             res = await testDAO.sendExecuteVotingMessage(votingSender,
                                                          votingId,
                                                          expirationDate,
+                                                         defaultVotingType,
                                                          supply,
                                                          0n,
                                                          winMsg);
@@ -1317,6 +1322,7 @@ describe('DAO integrational', () => {
             let res = await testDAO.sendExecuteVotingMessage(votingSender,
                                                              votingId,
                                                              expirationDate,
+                                                             defaultVotingType,
                                                              supply,
                                                              0n,
                                                              winMsg);
@@ -1341,6 +1347,7 @@ describe('DAO integrational', () => {
             res = await testDAO.sendExecuteVotingMessage(votingSender,
                                                          votingId,
                                                          expirationDate,
+                                                         defaultVotingType,
                                                          supply,
                                                          0n,
                                                          winMsg);
