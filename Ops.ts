@@ -37,7 +37,8 @@ export abstract class Op {
 		
 		
 		provide_wallet_address : 0x2c76b973,
-		take_wallet_address : 0xd1735400
+		take_wallet_address : 0xd1735400,
+		send_vote_result: 0x57fe3672
 	}
 	
 	// Keeper
