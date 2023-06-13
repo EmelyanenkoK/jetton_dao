@@ -267,14 +267,32 @@ int is_proposal_accepted(int voted_for, int voted_against, int total_votes) inli
     }
     if(op == op::execute_vote_result) {
         (int voting_id, int expiration_date) = (in_msg_body~load_uint(64), in_msg_body~load_uint(48));
+        int voting_type = in_msg_body~load_uint(64);
         slice voting_address = calculate_dao_voting_address(my_address(), voting_id, voting_code);
         throw_unless(error::unauthorized_vote_execution, equal_slice_bits(sender_address, voting_address));
         throw_unless(error::voting_not_finished, now() >= expiration_date);
-        (int voted_for, int voted_against, cell message) = (in_msg_body~load_coins(), in_msg_body~load_coins(), in_msg_body~load_maybe_ref());
-        if(is_proposal_accepted(voted_for, voted_against, total_supply)) {
-            ifnot(message.null?()) {
-              send_raw_message(message, CARRY_REMAINING_GAS);
+        (int voted_for, int voted_against, cell payload) = (in_msg_body~load_coins(), in_msg_body~load_coins(), in_msg_body~load_maybe_ref());
+        if(voting_type == 0) { ;; default "send message on success"
+            if(is_proposal_accepted(voted_for, voted_against, total_supply)) {
+                ifnot(payload.null?()) {
+                  send_raw_message(payload, CARRY_REMAINING_GAS);
+                }
             }
+        } elseif (voting_type == 1) { ;; "send results"
+            slice cs = payload.begin_parse();
+            slice destination = cs~load_msg_addr();
+            var msg = begin_cell()
+                    .store_msg_flag(msg_flag::non_bounceable)
+                    .store_slice(destination)
+                    .store_coins(0)
+                    .store_msgbody_prefix_slice()
+                    .store_op(op::send_vote_result)
+                    .store_query_id(query_id)
+                    .store_uint(voting_id, 64)
+                    .store_uint(expiration_date, 48)
+                    .store_coins(voted_for)
+                    .store_coins(voted_against);
+            return send_raw_message(msg.end_cell(), CARRY_REMAINING_GAS);
         }
         return ();
     }

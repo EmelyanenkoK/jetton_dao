@@ -17,6 +17,7 @@ export class JettonMinterTests extends JettonMinter {
 
     static createExecuteVotingMessage(voting_id:bigint,
                                       expiration_date: bigint,
+                                      voting_type:bigint,
                                       voted_for:bigint,
                                       voted_against:bigint,
                                       payload: Cell,
@@ -25,6 +26,7 @@ export class JettonMinterTests extends JettonMinter {
                           .storeUint(query_id, 64)
                           .storeUint(voting_id, 64)
                           .storeUint(expiration_date, 48)
+                          .storeUint(voting_type, 64)
                           .storeCoins(voted_for)
                           .storeCoins(voted_against)
                           .storeMaybeRef(payload)
@@ -35,6 +37,7 @@ export class JettonMinterTests extends JettonMinter {
                                    via: Sender,
                                    voting_id:bigint,
                                    expiration_date:bigint,
+                                   voting_type:bigint,
                                    voted_for:bigint,
                                    voted_against:bigint,
                                    payload:Cell,
@@ -44,6 +47,7 @@ export class JettonMinterTests extends JettonMinter {
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             body: JettonMinterTests.createExecuteVotingMessage(voting_id,
                                                           expiration_date,
+                                                          voting_type,
                                                           voted_for,
                                                           voted_against,
                                                           payload),
