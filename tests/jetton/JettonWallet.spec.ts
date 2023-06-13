@@ -35,8 +35,9 @@ describe('JettonWallet', () => {// return;
     let testWallet: (address:Address) => Promise<SandboxContract<JettonWalletTests>>;
     let defaultContent:Cell;
     let votingId:bigint;
-    let assertVoteCreation:(via:Sender, jettonWallet:ActiveJettonWallet, voting:Address, expDate:bigint, prop:Cell, expErr:number) => Promise<SendMessageResult>;
+    let assertVoteCreation:(via:Sender, jettonWallet:ActiveJettonWallet, voting:Address, votingType:bigint, expDate:bigint, prop:Cell, expErr:number) => Promise<SendMessageResult>;
     let assertWalletVote:(via:Sender, jettonWallet:ActiveJettonWallet, keeper:Address, expDate:bigint, expErr:number) => Promise<SendMessageResult>;
+    const defaultVoteType = 0n;
 
     beforeAll(async () => {
         jwallet_code = await compile('JettonWallet');
@@ -67,16 +68,16 @@ describe('JettonWallet', () => {// return;
                           )
                      );
 
-        assertVoteCreation = async (via:Sender, jettonWallet:ActiveJettonWallet, voting:Address, expDate:bigint, prop:Cell, expErr:number) => {
+        assertVoteCreation = async (via:Sender, jettonWallet:ActiveJettonWallet, voting:Address, votingType:bigint, expDate:bigint, prop:Cell, expErr:number) => {
             const minExecution   = toNano('0.5');
-            const res = await jettonWallet.sendCreateVotingThroughWallet(via, expDate, minExecution, prop);
+            const res = await jettonWallet.sendCreateVotingThroughWallet(via, expDate, minExecution, prop, votingType);
 
             const createVoting = {
                 from: jettonWallet.address,
                 on:   jettonMinter.address,
                 body: JettonMinter.createVotingMessage(expDate,
                                                        minExecution,
-                                                       prop)
+                                                       prop, votingType)
             };
 
             const deployVoting = {
@@ -893,10 +894,18 @@ describe('JettonWallet', () => {// return;
         const expirationDate = getRandomExp();
         const prop           = getRandomPayload();
         const votingAddress  = await jettonMinter.getVotingAddress(votingId);
-        await assertVoteCreation(notDeployer.getSender(), peasantWallet, votingAddress, expirationDate, prop, 0);
+        await assertVoteCreation(notDeployer.getSender(), peasantWallet, votingAddress, defaultVoteType, expirationDate, prop, 0);
         votingId++;
+    });
 
-
+    it('owner should be able to create vote type 1 via jetton wallet', async () => {
+        const peasantWallet  = await userWallet(notDeployer.address); // make sure deployer status has nothing to do wiht success
+        const expirationDate = getRandomExp();
+        const prop           = beginCell().storeAddress(randomAddress()).endCell();
+        const votingAddress  = await jettonMinter.getVotingAddress(votingId);
+        const votingType     = 1n;
+        await assertVoteCreation(notDeployer.getSender(), peasantWallet, votingAddress, votingType, expirationDate, prop, 0);
+        votingId++;
     });
 
     it('not owner should not be able to create voting via jetton wallet', async () => {
@@ -904,8 +913,7 @@ describe('JettonWallet', () => {// return;
         const expirationDate = getRandomExp();
         const prop           = getRandomPayload();
         const votingAddress  = await jettonMinter.getVotingAddress(votingId);
-        await assertVoteCreation(deployer.getSender(), jettonWallet, votingAddress, expirationDate, prop, 710);
-
+        await assertVoteCreation(deployer.getSender(), jettonWallet, votingAddress, defaultVoteType, expirationDate, prop, 710);
     });
 
     it('should not be possible to create voting for too long', async() => {
@@ -917,10 +925,10 @@ describe('JettonWallet', () => {// return;
         const votingAddress  = await jettonMinter.getVotingAddress(votingId);
         const userSender     = notDeployer.getSender();
 
-        await assertVoteCreation(userSender, jettonWallet, votingAddress, expirationDate, prop, 0xf10);
+        await assertVoteCreation(userSender, jettonWallet, votingAddress, defaultVoteType, expirationDate, prop, 0xf10);
 
         // Verifying edge case works
-        await assertVoteCreation(userSender, jettonWallet, votingAddress, expirationDate - 1n, prop, 0);
+        await assertVoteCreation(userSender, jettonWallet, votingAddress, defaultVoteType, expirationDate - 1n, prop, 0);
         votingId++;
 
     });
@@ -934,10 +942,10 @@ describe('JettonWallet', () => {// return;
         const votingAddress  = await jettonMinter.getVotingAddress(votingId);
         const userSender     = notDeployer.getSender();
 
-        await assertVoteCreation(userSender, jettonWallet, votingAddress, expirationDate, prop, 0xf9);
+        await assertVoteCreation(userSender, jettonWallet, votingAddress, defaultVoteType, expirationDate, prop, 0xf9);
 
         // Verifying edge case works
-        await assertVoteCreation(userSender, jettonWallet, votingAddress, expirationDate + 1n, prop, 0);
+        await assertVoteCreation(userSender, jettonWallet, votingAddress, defaultVoteType, expirationDate + 1n, prop, 0);
         votingId++;
 
     });
@@ -948,7 +956,7 @@ describe('JettonWallet', () => {// return;
         const expirationDate = getRandomExp();
         const prop           = getRandomPayload();
         const votingAddress = await jettonMinter.getVotingAddress(votingId++);
-        let   res    = await assertVoteCreation(notDeployer.getSender(), jettonWallet, votingAddress, expirationDate, prop, 0);
+        let   res    = await assertVoteCreation(notDeployer.getSender(), jettonWallet, votingAddress, defaultVoteType, expirationDate, prop, 0);
         const keeper = await jettonWallet.getVoteKeeperAddress(votingAddress);
 
         res = await jettonWallet.sendVote(deployer.getSender(), votingAddress, expirationDate, true, false);
@@ -973,7 +981,7 @@ describe('JettonWallet', () => {// return;
         const prop           = getRandomPayload();
         const votingAddress  = await jettonMinter.getVotingAddress(votingId++);
         const keeper         = await jettonWallet.getVoteKeeperAddress(votingAddress);
-        let   res            = await assertVoteCreation(notDeployer.getSender(), jettonWallet, votingAddress, expirationDate, prop, 0);
+        let   res            = await assertVoteCreation(notDeployer.getSender(), jettonWallet, votingAddress, defaultVoteType, expirationDate, prop, 0);
         expirationDate       = BigInt(blockchain.now + max_voting_duration);
 
         res = await jettonWallet.sendVote(notDeployer.getSender(), votingAddress, expirationDate, true, false);
@@ -1011,7 +1019,7 @@ describe('JettonWallet', () => {// return;
         let   expirationDate = getRandomExp(blockchain.now);
         const prop           = getRandomPayload();
         const votingAddress  = await jettonMinter.getVotingAddress(votingId++);
-        let   res            = await assertVoteCreation(notDeployer.getSender(), jettonWallet, votingAddress, expirationDate, prop, 0);
+        let   res            = await assertVoteCreation(notDeployer.getSender(), jettonWallet, votingAddress, defaultVoteType, expirationDate, prop, 0);
         const keeper         = await jettonWallet.getVoteKeeperAddress(votingAddress);
         expirationDate       = BigInt(blockchain.now);
 
