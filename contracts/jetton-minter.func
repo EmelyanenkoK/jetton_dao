@@ -225,10 +225,9 @@ int is_proposal_accepted(int voted_for, int voted_against, int total_votes) inli
     }
 
     if (op == op::create_voting) { ;; anybody can create a voting proposal
-        (int expiration_date, cell proposal) = (in_msg_body~load_uint(48), in_msg_body~load_ref());
+        (int voting_type, int expiration_date, cell proposal) = (in_msg_body~load_uint(64), in_msg_body~load_uint(48), in_msg_body~load_ref());
         throw_unless(error::voting_already_finished, now() < expiration_date);
         throw_unless(error::expiration_date_too_high, now() + max_voting_duration > expiration_date);
-        int voting_type = 0;
         cell state_init = calculate_dao_voting_state_init (my_address(), voting_id, voting_code);
         slice voting = calc_address(state_init);
         var msg_body = begin_cell()
