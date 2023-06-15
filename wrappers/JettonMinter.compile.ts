@@ -11,5 +11,6 @@ export const compile: CompilerConfig = {
         await compileFunc('JettonWallet');
     },
     targets: [ 'contracts/auto/jetton-wallet-code.func',
+               'contracts/dao-decisions-filter.func',
                'contracts/jetton-minter.func'],
 };
