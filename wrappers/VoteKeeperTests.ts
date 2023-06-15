@@ -1,5 +1,6 @@
 import { Address, beginCell, Cell, Contract, contractAddress, ContractProvider, Sender, SendMode, toNano } from 'ton-core';
 import { VoteKeeper } from './VoteKeeper';
+import { Op } from '../Ops';
 export class VoteKeeperTests extends VoteKeeper {
 
     constructor(readonly address: Address, readonly init?: { code: Cell; data: Cell }) {
@@ -16,7 +17,7 @@ export class VoteKeeperTests extends VoteKeeper {
                               vote_for: boolean,
                               vote_confirmation: boolean,
                               query_id: bigint = 0n) {
-        return beginCell().storeUint(0x2bd63704, 32)
+        return beginCell().storeUint(Op.keeper.request_vote, 32)
                           .storeUint(query_id, 64)
                           .storeAddress(voter)
                           .storeUint(expiration_date, 48)
