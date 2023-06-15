@@ -76,6 +76,7 @@ describe('JettonWallet', () => {// return;
                 on:   jettonMinter.address,
                 body: JettonMinter.createVotingMessage(expDate,
                                                        minExecution,
+                                                       0n,
                                                        prop)
             };
 

@@ -107,7 +107,8 @@ export class JettonMinter implements Contract {
 
     static createVotingMessage(expiration_date: bigint,
                                minimal_execution_amount:bigint,
-                               /*destination: Address, amount:bigint,*/ payload:Cell,
+                               votingType: bigint,
+                               payload:Cell,
                                description: string = "Sample description") {
         let forwardMsgBuilder = beginCell();
         //storeMessageRelaxed(internal({to:destination, value:amount, body:payload}))(forwardMsgBuilder);
@@ -116,16 +117,18 @@ export class JettonMinter implements Contract {
         return beginCell().storeUint(0x1c7f9a1a, 32).storeUint(0, 64) // op, queryId
                           .storeUint(expiration_date, 48)
                           .storeRef(proposal)
+                          .storeUint(votingType, 64)
                .endCell();
     }
 
     async sendCreateVoting(provider: ContractProvider, via: Sender, expiration_date: bigint,
                            minimal_execution_amount:bigint,
-                           /*destination: Address, amount:bigint,*/ payload:Cell,
+                           payload:Cell,
+                           votingType: bigint = 0n,
                            description: string = "Sample description") {
         await provider.internal(via, {
             sendMode: SendMode.PAY_GAS_SEPARATELY,
-            body: JettonMinter.createVotingMessage(expiration_date, minimal_execution_amount, /*destination, amount,*/ payload, description),
+            body: JettonMinter.createVotingMessage(expiration_date, minimal_execution_amount, votingType, payload, description),
             value: toNano("0.1") + minimal_execution_amount,
         });
     }

@@ -38,3 +38,8 @@ const int error::expiration_date_too_high = 0xf10;
 ;; vote controller errors
 const int error::unauthorized_request_vote = 0x1f4;
 const int error::no_new_votes = 0x1f5;
+
+
+const int error::already_finished = 0x2f5;
+const int error::unauthorized_vote_results = 0x2f6;
+const int error::voting_id_mismatch = 0x2f7;

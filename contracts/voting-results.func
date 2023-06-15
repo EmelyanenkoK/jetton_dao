@@ -1,0 +1,88 @@
+;; Special contract with only purpose to demonstrate final voting result
+;; It's address is deterministic given known voting_body (what this voting is about),
+;; voting_duration and dao-address
+
+;; For instance one can search for voting results about network config updates
+;; where voting_body contains hash of new config parameter
+;; voting_duration is 3 days
+;; and dao-address is address of some protocol
+
+#include "stdlib.func";
+#include "error-codes.func";
+#include "op-codes.func";
+#include "messages.func";
+
+(int, cell, int, slice, int, int, int, int) load_data() inline {
+    slice cs = get_data().begin_parse();
+    int init? = cs~load_int(1);
+    cell voting_body = cs~load_ref();
+    int voting_duration = cs~load_int(48);
+    slice dao_address = cs~load_msg_addr();
+
+    if(init?) {
+      int finished? = cs~load_int(1);
+      int voting_id = cs~load_coins();
+      int votes_for = cs~load_coins();
+      int votes_against = cs~load_coins();
+      return (init?, voting_body, voting_duration, dao_address,
+              finished?, voting_id, votes_for, votes_against);
+    } else {
+       return (init?, voting_body, voting_duration, dao_address,
+        null(), null(), null(), null());
+    }
+}
+() save_data(int init?, cell voting_body, int voting_duration, slice dao_address,
+             int finished?, int voting_id, int votes_for, int votes_against) impure inline {
+    var data = begin_cell().store_int(init?, 1)
+                           .store_ref(voting_body)
+                           .store_uint(voting_duration, 48)
+                           .store_slice(dao_address);
+    if (init?) {
+        data = data.store_int(finished?, 1)
+                   .store_uint(voting_id, 64)
+                   .store_coins(votes_for)
+                   .store_coins(votes_against);
+    }
+    set_data(data.end_cell());
+}
+
+() main (int balance, int msg_value, cell in_msg_full, slice in_msg_body) {
+    slice cs = in_msg_full.begin_parse();
+    int flags = cs~load_uint(4);
+    if (flags & 1) {
+        return ();
+    }
+    slice sender_address = cs~load_msg_addr();
+    int op = in_msg_body~load_uint(32);
+    int query_id = in_msg_body~load_uint(64);
+    if (op == op::init_voting_results) {
+        (int init?, cell voting_body, int voting_duration, slice dao_address,
+         int finished?, int voting_id, int votes_for, int votes_against) = load_data();
+        throw_if(error::already_inited, init?);
+        throw_unless(error::unauthorized_init, equal_slice_bits(sender_address, dao_address));
+        voting_id = in_msg_body~load_uint(64);
+        init? = true;
+        finished? = false;
+        votes_for = votes_against = 0;
+        return save_data(init?, voting_body, voting_duration, dao_address,
+                         finished?, voting_id, votes_for, votes_against);
+    } elseif (op == op::send_vote_result) {
+        (int init?, cell voting_body, int voting_duration, slice dao_address,
+         int finished?, int voting_id, int votes_for, int votes_against) = load_data();
+        throw_unless(error::not_inited, init?);
+        throw_if(error::already_finished , finished?);
+        throw_unless(error::unauthorized_vote_results, equal_slice_bits(sender_address, dao_address));
+        int incoming_voting_id = in_msg_body~load_uint(64);
+        throw_unless(error::voting_id_mismatch , voting_id == incoming_voting_id);
+        int expiration_date = in_msg_body~load_uint(48);
+        votes_for = in_msg_body~load_coins();
+        votes_against = in_msg_body~load_coins();
+    }
+    throw(error::unknown_op);
+}
+
+;;    (int init?, cell voting_body, int voting_duration, slice dao_address,
+;;     int finished?, int voting_id, int votes_for, int votes_against)
+var get_voting_results() method_id {
+  return load_data();
+}
