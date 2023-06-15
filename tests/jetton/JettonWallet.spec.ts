@@ -20,7 +20,7 @@ import { JettonWalletTests } from '../../wrappers/JettonWalletTests';
 */
 
 //jetton params
-let fwd_fee = 1804014n, gas_consumption = 19500000n, min_tons_for_storage = 10000000n, max_voting_duration = 2592000;
+let fwd_fee = 1804014n, gas_consumption = 19000000n, min_tons_for_storage = 10000000n, max_voting_duration = 2592000;
 
 describe('JettonWallet', () => {// return;
     let jwallet_code = new Cell();
@@ -53,8 +53,6 @@ describe('JettonWallet', () => {// return;
                      {
                        admin: deployer.address,
                        content: defaultContent,
-                       wallet_code: jwallet_code,
-                       vote_keeper_code: vote_keeper_code,
                        voting_code: voting_code
                      },
                      minter_code));
@@ -492,7 +490,7 @@ describe('JettonWallet', () => {// return;
             expect(sendResult.transactions).toHaveTransaction({ //message to admin
                 from: jettonMinter.address,
                 on: deployer.address,
-                op: 0x8899aa
+                op: 0x319b0cdc
             });
             expect(await deployerJettonWallet.getJettonBalance()).toEqual(initialJettonBalance - burnAmount);
             expect(await jettonMinter.getTotalSupply()).toEqual(initialTotalSupply - burnAmount);
@@ -538,7 +536,7 @@ describe('JettonWallet', () => {// return;
        let initialJettonBalance   = await deployerJettonWallet.getJettonBalance();
        let initialTotalSupply     = await jettonMinter.getTotalSupply();
        let burnAmount   = toNano('0.01');
-       let fwd_fee      = 1492012n /*1500012n*/, gas_consumption = 19500000n;
+       let fwd_fee      = 1492012n /*1500012n*/, gas_consumption = 19000000n;
        let minimalFee   = fwd_fee + 2n*gas_consumption;
 
        const sendLow    = await deployerJettonWallet.sendBurn(deployer.getSender(), minimalFee, // ton amount

@@ -10,7 +10,6 @@ import { JettonMinterTests } from "../../wrappers/JettonMinterTests";
 let blockchain: Blockchain;
 let jwallet_code:Cell;
 let voting_code:Cell;
-let keeper_code:Cell;
 let master:ActiveWallet;
 let userWallet:ActiveWallet;
 let proposal:Cell;
@@ -24,7 +23,6 @@ describe('Voting init unit tests', () => {
         votingType   = 0n;
         voting_code  = await compile('Voting');
         jwallet_code = await compile('JettonWallet');
-        keeper_code  = await compile('VoteKeeper');
         blockchain   = await Blockchain.create();
         master       = await blockchain.treasury('master');
         userWallet   = await blockchain.treasury('user1');
@@ -46,8 +44,6 @@ describe('Voting init unit tests', () => {
         const res = await voting.sendInitVoteMessage(master.getSender(),
                                                      expirationDate,
                                                      votingType,
-                                                     jwallet_code,
-                                                     keeper_code,
                                                      proposal,
                                                      userWallet.address);
         expect(res.transactions).toHaveTransaction({
@@ -83,8 +79,6 @@ describe('Voting init unit tests', () => {
         let   res = await voting.sendInitVoteMessage(master.getSender(),
                                                      expirationDate,
                                                      votingType,
-                                                     jwallet_code,
-                                                     keeper_code,
                                                      proposal,
                                                      userWallet.address);
         expect(res.transactions).toHaveTransaction({
@@ -100,8 +94,6 @@ describe('Voting init unit tests', () => {
         res = await voting.sendInitVoteMessage(master.getSender(),
                                                expirationDate + delta,
                                                votingType + delta,
-                                               jwallet_code,
-                                               keeper_code,
                                                proposal,
                                                userWallet.address);
         
@@ -134,8 +126,6 @@ describe('Voting init unit tests', () => {
         let   res = await voting.sendInitVoteMessage(userWallet.getSender(),
                                                      expirationDate,
                                                      votingType,
-                                                     jwallet_code,
-                                                     keeper_code,
                                                      proposal,
                                                      userWallet.address);
  

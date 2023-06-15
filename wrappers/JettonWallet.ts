@@ -12,8 +12,7 @@ export type JettonData = {
 
 export type DaoData = JettonData & {
    locked: bigint,
-   lockExpiration: number,
-   voteKeeperCode: Cell
+   lockExpiration: number
 }
 
 export function jettonWalletConfigToCell(config: JettonWalletConfig): Cell {
@@ -205,8 +204,7 @@ export class JettonWallet implements Contract {
         return {
             ...this.unpackJettonData(res.stack),
             locked: res.stack.readBigNumber(),
-            lockExpiration: res.stack.readNumber(),
-            voteKeeperCode: res.stack.readCell()
+            lockExpiration: res.stack.readNumber()
         };
     }
 

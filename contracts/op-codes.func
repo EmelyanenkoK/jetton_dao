@@ -28,6 +28,7 @@ const int op::upgrade_code = 0x34aea60d;
 const int op::create_voting = 0x1c7f9a1a;
 const int op::voting_initiated = 0x8e2abb23;
 const int op::execute_vote_result = 0x4f0f7510;
+const int op::send_vote_result = 0x57fe3672;
 const int op::voting_created = 0xc39f0be6; ;; to user
 const int op::request_confirm_voting = 0x0222fdcb;
 

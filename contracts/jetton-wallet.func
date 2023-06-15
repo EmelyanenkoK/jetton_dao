@@ -13,7 +13,7 @@ const int min_tons_for_storage = 10000000; ;;ONE_TON / 100;
 ;; a) jetton logic become more costly
 ;; b) jetton-wallet code become larger or smalle
 ;; c) global fee changes / different workchain
-const int gas_consumption = 19500000;
+const int gas_consumption = 19000000;
 const int burn_notification = 0; ;;TODO
 
 {-
@@ -23,46 +23,41 @@ const int burn_notification = 0; ;;TODO
             jetton_master_address:MsgAddressInt
             jetton_wallet_code:^Cell
             locked:Coins lock_expiration:uint48
-            vote_keeper_code:^Cell
             = Storage;
 -}
 
-(int, slice, slice, cell, int, int, cell) _load_data() inline {
+(int, slice, slice, cell, int, int) _load_data() inline {
   slice ds = get_data().begin_parse();
   return (ds~load_coins(),
           ds~load_msg_addr(),
           ds~load_msg_addr(),
           ds~load_ref(),
-          ds~load_coins(), ds~load_uint(48),
-          ds~load_ref()
+          ds~load_coins(), ds~load_uint(48)
          );
 }
 
-(int, slice, slice, cell, int, int, cell) load_data() inline {
+(int, slice, slice, cell, int, int) load_data() inline {
   (int balance, slice owner_address,
           slice jetton_master_address, cell jetton_wallet_code,
-          int locked, int lock_expiration,
-          cell vote_keeper_code) = _load_data();
+          int locked, int lock_expiration) = _load_data();
   if(lock_expiration < now()) {
     balance += locked;
     locked = 0;
     lock_expiration = 0;
   }
-  return (balance, owner_address, jetton_master_address, jetton_wallet_code, locked, lock_expiration, vote_keeper_code);
+  return (balance, owner_address, jetton_master_address, jetton_wallet_code, locked, lock_expiration);
 }
 
 () save_data (int balance, slice owner_address,
               slice jetton_master_address, cell jetton_wallet_code,
-              int locked, int lock_expiration,
-              cell vote_keeper_code) impure inline {
+              int locked, int lock_expiration) impure inline {
   set_data(
            pack_jetton_wallet_data(balance,
                                    owner_address,
                                    jetton_master_address,
                                    jetton_wallet_code,
                                    locked,
-                                   lock_expiration,
-                                   vote_keeper_code)
+                                   lock_expiration)
           );
 }
 
@@ -86,14 +81,13 @@ const int burn_notification = 0; ;;TODO
   force_chain(to_owner_address);
   (int balance, slice owner_address,
    slice jetton_master_address, cell jetton_wallet_code,
-   int locked, int lock_expiration,
-   cell vote_keeper_code) = load_data();
+   int locked, int lock_expiration) = load_data();
   balance -= jetton_amount;
 
   throw_unless(error::unauthorized_transfer, equal_slice_bits(owner_address, sender_address));
   throw_unless(error::not_enough_jettons, balance >= 0);
 
-  cell state_init = calculate_jetton_wallet_state_init(to_owner_address, jetton_master_address, jetton_wallet_code, vote_keeper_code);
+  cell state_init = calculate_jetton_wallet_state_init(to_owner_address, jetton_master_address, jetton_wallet_code);
   slice to_wallet_address = calc_address(state_init);
   slice response_address = in_msg_body~load_msg_addr();
   cell custom_payload = in_msg_body~load_maybe_ref();
@@ -128,7 +122,7 @@ const int burn_notification = 0; ;;TODO
                      ;; msg_fwd_fee(to_wallet, msg_body, state_init, 15)
 
   send_raw_message(msg.end_cell(), CARRY_REMAINING_GAS); ;; revert on errors
-  save_data(balance, owner_address, jetton_master_address, jetton_wallet_code, locked, lock_expiration, vote_keeper_code);
+  save_data(balance, owner_address, jetton_master_address, jetton_wallet_code, locked, lock_expiration);
 }
 
 {-
@@ -145,8 +139,7 @@ const int burn_notification = 0; ;;TODO
   ;; no bounce. Thus check and throw in computation phase.
   (int balance, slice owner_address,
    slice jetton_master_address, cell jetton_wallet_code,
-   int locked, int lock_expiration,
-   cell vote_keeper_code) = load_data();
+   int locked, int lock_expiration) = load_data();
   int query_id = in_msg_body~load_query_id();
   int jetton_amount = in_msg_body~load_coins();
   balance += jetton_amount;
@@ -155,7 +148,7 @@ const int burn_notification = 0; ;;TODO
   throw_unless(error::unauthorized_incoming_transfer,
       equal_slice_bits(jetton_master_address, sender_address)
       |
-      equal_slice_bits(calc_user_wallet(from_address, jetton_master_address, jetton_wallet_code, vote_keeper_code), sender_address)
+      equal_slice_bits(calc_user_wallet(from_address, jetton_master_address, jetton_wallet_code), sender_address)
   );
   int forward_ton_amount = in_msg_body~load_coins();
 
@@ -194,7 +187,7 @@ const int burn_notification = 0; ;;TODO
     send_raw_message(msg.end_cell(), CARRY_REMAINING_BALANCE | IGNORE_ERRORS);
   }
 
-  save_data(balance, owner_address, jetton_master_address, jetton_wallet_code, locked, lock_expiration, vote_keeper_code);
+  save_data(balance, owner_address, jetton_master_address, jetton_wallet_code, locked, lock_expiration);
 }
 
 {-
@@ -205,8 +198,7 @@ const int burn_notification = 0; ;;TODO
   ;; no bounce. Thus check and throw in computation phase.
   (int balance, slice owner_address,
    slice jetton_master_address, cell jetton_wallet_code,
-   int locked, int lock_expiration,
-   cell vote_keeper_code) = load_data();
+   int locked, int lock_expiration) = load_data();
   int query_id = in_msg_body~load_query_id();
   int jetton_amount = in_msg_body~load_coins();
   slice response_address = in_msg_body~load_msg_addr();
@@ -234,21 +226,20 @@ const int burn_notification = 0; ;;TODO
 
   send_raw_message(msg.end_cell(), CARRY_REMAINING_GAS);
 
-  save_data(balance, owner_address, jetton_master_address, jetton_wallet_code, locked, lock_expiration, vote_keeper_code);
+  save_data(balance, owner_address, jetton_master_address, jetton_wallet_code, locked, lock_expiration);
 }
 
 () on_bounce (slice in_msg_body) impure inline_ref {
   in_msg_body~skip_bounce_flag();
   (int balance, slice owner_address,
    slice jetton_master_address, cell jetton_wallet_code,
-   int locked, int lock_expiration,
-   cell vote_keeper_code) = load_data();
+   int locked, int lock_expiration) = load_data();
   int op = in_msg_body~load_op();
   throw_unless(error::unknown_action_bounced, (op == op::internal_transfer) | (op == op::burn_notification));
   int query_id = in_msg_body~load_query_id();
   int jetton_amount = in_msg_body~load_coins();
   balance += jetton_amount;
-  save_data(balance, owner_address, jetton_master_address, jetton_wallet_code, locked, lock_expiration, vote_keeper_code);
+  save_data(balance, owner_address, jetton_master_address, jetton_wallet_code, locked, lock_expiration);
 }
 
 () recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
@@ -288,8 +279,7 @@ const int burn_notification = 0; ;;TODO
 
   (int balance, slice owner_address,
    slice jetton_master_address, cell jetton_wallet_code,
-   int locked, int lock_expiration,
-   cell vote_keeper_code) = load_data();
+   int locked, int lock_expiration) = load_data();
   ;; Withdraw tons or jettons which accidentally were sent to this jettonWallet
   if (op == op::withdraw_tons) {
     throw_unless(error::unauthorized_transfer, equal_slice_bits(owner_address, sender_address));
@@ -343,7 +333,7 @@ const int burn_notification = 0; ;;TODO
     int vote = in_msg_body~load_int(1);
     int need_confirmation = in_msg_body~load_int(1);
     in_msg_body.end_parse();
-    cell vote_keeper_initstate = calculate_vote_keeper_state_init (my_address(), voting, vote_keeper_code);
+    cell vote_keeper_initstate = calculate_vote_keeper_state_init (my_address(), voting, vote_keeper_code());
     slice vote_keeper = calc_address(vote_keeper_initstate);
     locked += balance;
     balance = 0;
@@ -363,7 +353,7 @@ const int burn_notification = 0; ;;TODO
             .store_int(vote, 1)
             .store_int(need_confirmation, 1);
     send_raw_message(msg.end_cell(), CARRY_REMAINING_GAS);
-    save_data(balance, owner_address, jetton_master_address, jetton_wallet_code, locked, lock_expiration, vote_keeper_code);
+    save_data(balance, owner_address, jetton_master_address, jetton_wallet_code, locked, lock_expiration);
     return ();
   }
   if(op == op::create_voting_through_wallet) {
@@ -424,11 +414,11 @@ const int burn_notification = 0; ;;TODO
 }
 
 (int, slice, slice, cell) get_wallet_data() method_id {
-  (int balance, slice owner, slice minter, cell code, _, _, _) = load_data();
+  (int balance, slice owner, slice minter, cell code, _, _) = load_data();
   return (balance, owner, minter, code);
 }
 
-(int, slice, slice, cell, int, int, cell) get_dao_wallet_data() method_id {
+(int, slice, slice, cell, int, int) get_dao_wallet_data() method_id {
   return load_data();
 }
 
@@ -436,8 +426,7 @@ const int burn_notification = 0; ;;TODO
 (slice) get_vote_keeper_address(slice voting_address) method_id {
   (int balance, slice owner_address,
           slice jetton_master_address, cell jetton_wallet_code,
-          int locked, int lock_expiration,
-          cell vote_keeper_code) = load_data();
-  cell vote_keeper_initstate = calculate_vote_keeper_state_init (my_address(), voting_address, vote_keeper_code);
+          int locked, int lock_expiration) = load_data();
+  cell vote_keeper_initstate = calculate_vote_keeper_state_init (my_address(), voting_address, vote_keeper_code());
   return calc_address(vote_keeper_initstate);
 }
