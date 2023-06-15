@@ -390,3 +390,8 @@ cell get_voting_code() method_id {
             int voting_id, cell voting_code) = load_data();
     return voting_code;
 }
+
+slice get_voting_results_address(cell voting_body, int duration) method_id {
+    cell vr_state_init = calculate_voting_results_state_init(voting_body, duration, my_address());
+    return calc_address(vr_state_init);
+}
