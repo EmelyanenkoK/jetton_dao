@@ -77,6 +77,8 @@
         int expiration_date = in_msg_body~load_uint(48);
         votes_for = in_msg_body~load_coins();
         votes_against = in_msg_body~load_coins();
+        return save_data(init?, voting_body, voting_duration, dao_address,
+                finished?, voting_id, votes_for, votes_against);
     }
     throw(error::unknown_op);
 }
