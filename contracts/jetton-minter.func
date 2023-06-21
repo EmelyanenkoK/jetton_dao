@@ -115,7 +115,7 @@ int is_proposal_accepted(int voted_for, int voted_against, int total_votes) inli
                 .store_query_id(query_id)
                 .store_coins(jetton_amount) ;; max 124 bit
                 .store_uint(0, 2) ;; from_address, addr_none$00
-                .store_slice(sender_address) ;; response_address, 3 + 8 + 256 = 267 bit
+                .store_slice(to_address) ;; response_address, 3 + 8 + 256 = 267 bit
                 .store_coins(forward_ton_amount) ;; forward_amount, 4 bit if zero
                 .store_uint(0, 1) ;; no forward_payload, 1 bit
                 .end_cell();

@@ -14,7 +14,7 @@ const int min_tons_for_storage = 10000000; ;;ONE_TON / 100;
 ;; b) jetton-wallet code become larger or smalle
 ;; c) global fee changes / different workchain
 const int gas_consumption = 19000000;
-const int burn_notification = 1000000000;
+const int burn_notification = 750000000;
 
 {-
   Storage

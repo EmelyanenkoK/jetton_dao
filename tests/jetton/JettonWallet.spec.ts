@@ -481,7 +481,7 @@ describe('JettonWallet', () => {// return;
             let initialJettonBalance = await deployerJettonWallet.getJettonBalance();
             let initialTotalSupply = await jettonMinter.getTotalSupply();
             let burnAmount = toNano('0.01');
-            const sendResult = await deployerJettonWallet.sendBurn(deployer.getSender(), toNano('0.1'), // ton amount
+            const sendResult = await deployerJettonWallet.sendBurn(deployer.getSender(), toNano('0.8'), // ton amount
                                  burnAmount, deployer.address, null); // amount, response address, custom payload
             expect(sendResult.transactions).toHaveTransaction({ //burn notification
                 from: deployerJettonWallet.address,
@@ -538,7 +538,8 @@ describe('JettonWallet', () => {// return;
        let initialTotalSupply     = await jettonMinter.getTotalSupply();
        let burnAmount   = toNano('0.01');
        let fwd_fee      = 1492012n /*1500012n*/, gas_consumption = 19000000n;
-       let minimalFee   = fwd_fee + 2n*gas_consumption;
+       let baseFee = toNano('0.75');
+       let minimalFee   = baseFee + fwd_fee + 2n*gas_consumption;
 
        const sendLow    = await deployerJettonWallet.sendBurn(deployer.getSender(), minimalFee, // ton amount
                             burnAmount, deployer.address, null); // amount, response address, custom payload
