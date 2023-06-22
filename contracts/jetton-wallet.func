@@ -360,7 +360,7 @@ const int burn_notification = 750000000;
     throw_unless(error::unauthorized_vote_submition, equal_slice_bits(owner_address, sender_address));
     ;; create_voting_with_wallet query_id:uint64 expiration_date:uint48 proposal:^Proposal = InternalMsgBody;
     int query_id = in_msg_body~load_query_id();
-    (int expiration_date, cell proposal) = (in_msg_body~load_uint(48), in_msg_body~load_ref());
+    (int voting_type, int expiration_date, cell proposal) = (in_msg_body~load_uint(64), in_msg_body~load_uint(48), in_msg_body~load_ref());
     throw_unless(error::expiration_date_too_high, now() + max_voting_duration > expiration_date);
     throw_unless(error::voting_already_finished, now() < expiration_date);
     in_msg_body.end_parse();
@@ -371,6 +371,7 @@ const int burn_notification = 750000000;
             .store_msgbody_prefix_slice()
             .store_op(op::create_voting)
             .store_query_id(query_id)
+            .store_uint(voting_type, 64)
             .store_uint(expiration_date, 48)
             .store_ref(proposal)
             .store_uint(0, 64); ;; voting_type
