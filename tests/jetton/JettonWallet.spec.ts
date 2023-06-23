@@ -1,5 +1,5 @@
 import { Blockchain, SandboxContract, TreasuryContract, Verbosity, internal, SendMessageResult } from '@ton-community/sandbox';
-import { Cell, toNano, beginCell, Address, SendMode, Sender } from 'ton-core';
+import { Cell, toNano, beginCell, Address, SendMode, Sender, Dictionary } from 'ton-core';
 import { JettonWallet, jettonWalletConfigToCell } from '../../wrappers/JettonWallet';
 import { JettonMinter, jettonMinterConfigToCell } from '../../wrappers/JettonMinter';
 import { Voting } from '../../wrappers/Voting';
@@ -20,7 +20,7 @@ import { JettonWalletTests } from '../../wrappers/JettonWalletTests';
 */
 
 //jetton params
-let fwd_fee = 1804014n, gas_consumption = 19000000n, min_tons_for_storage = 10000000n, max_voting_duration = 2592000;
+let fwd_fee = 1804014n, gas_consumption = 11500000n, min_tons_for_storage = 10000000n, max_voting_duration = 2592000;
 
 describe('JettonWallet', () => {// return;
     let jwallet_code = new Cell();
@@ -39,11 +39,17 @@ describe('JettonWallet', () => {// return;
     let assertWalletVote:(via:Sender, jettonWallet:ActiveJettonWallet, keeper:Address, expDate:bigint, expErr:number) => Promise<SendMessageResult>;
 
     beforeAll(async () => {
+        blockchain = await Blockchain.create();
         jwallet_code = await compile('JettonWallet');
+
+        const _libs = Dictionary.empty(Dictionary.Keys.BigUint(256), Dictionary.Values.Cell());
+        _libs.set(BigInt(`0x${jwallet_code.hash().toString('hex')}`), jwallet_code);
+        const libs = beginCell().storeDictDirect(_libs).endCell();
+        blockchain.libs = libs;
+
         minter_code = await compile('JettonMinter');
         voting_code = await compile('Voting');
         vote_keeper_code = await compile('VoteKeeper');
-        blockchain = await Blockchain.create();
         deployer = await blockchain.treasury('deployer');
         notDeployer = await blockchain.treasury('notDeployer');
         defaultContent = beginCell().endCell();
@@ -537,7 +543,7 @@ describe('JettonWallet', () => {// return;
        let initialJettonBalance   = await deployerJettonWallet.getJettonBalance();
        let initialTotalSupply     = await jettonMinter.getTotalSupply();
        let burnAmount   = toNano('0.01');
-       let fwd_fee      = 1492012n /*1500012n*/, gas_consumption = 19000000n;
+       let fwd_fee      = 1492012n /*1500012n*/ ;//, gas_consumption = 19000000n;
        let baseFee = toNano('0.75');
        let minimalFee   = baseFee + fwd_fee + 2n*gas_consumption;
 

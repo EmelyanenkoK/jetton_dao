@@ -11,9 +11,10 @@ const int min_tons_for_storage = 10000000; ;;ONE_TON / 100;
 ;; and also constant fees on inter-wallet interaction, in particular fwd fee on state_init transfer
 ;; that means that you need to reconsider this fee when:
 ;; a) jetton logic become more costly
-;; b) jetton-wallet code become larger or smalle
+;; b) jetton-wallet code become larger or smaller
 ;; c) global fee changes / different workchain
-const int gas_consumption = 19000000;
+;; if jetton_wallet_code is not stored in library cell use 19000000
+const int gas_consumption = external_param::wallet_gas_consumption;
 const int burn_notification = 750000000;
 
 {-
@@ -140,6 +141,15 @@ const int burn_notification = 750000000;
   (int balance, slice owner_address,
    slice jetton_master_address, cell jetton_wallet_code,
    int locked, int lock_expiration) = load_data();
+  if(external_param::using_libs) {
+    ;; libs related code
+    ifnot(balance) {
+      ifnot (jetton_wallet_code.cell_depth()) {
+        ;;code is library
+        set_code(begin_cell().store_slice(jetton_wallet_code.begin_parse()).end_cell());
+      }
+    }
+  }
   int query_id = in_msg_body~load_query_id();
   int jetton_amount = in_msg_body~load_coins();
   balance += jetton_amount;

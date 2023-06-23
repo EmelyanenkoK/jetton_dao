@@ -22,6 +22,7 @@ const int error::unauthorized_change_content_request = 77;
 const int error::unauthorized_vote_execution = 78;
 const int error::unauthorized_code_upgrade_request = 79;
 const int error::voting_discovery_fee_not_matched = 80;
+const int error::forbidden_vote_id = 81;
 
 ;; voting errors
 const int error::already_inited = 0xf3;

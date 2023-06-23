@@ -1,0 +1,8 @@
+;; This file should be linked separately, thus developer to depend on this
+;; repo could use own params
+
+const int external_param::using_libs = -1;
+;; when using libs gas consumption is lower, note that true == -1
+const int external_param::wallet_gas_consumption = 19000000 + external_param::using_libs * 7500000;
+
+const int external_param::only_polls = 0;

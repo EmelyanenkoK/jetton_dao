@@ -1,5 +1,5 @@
 import { Blockchain, SandboxContract, TreasuryContract, Verbosity, internal } from '@ton-community/sandbox';
-import { Cell, toNano, beginCell, storeMessageRelaxed, Address, SendMode, OpenedContract, AccountStorage } from 'ton-core';
+import { Cell, toNano, beginCell, storeMessageRelaxed, Address, SendMode, OpenedContract, AccountStorage, Dictionary } from 'ton-core';
 import { JettonWallet } from '../../wrappers/JettonWallet';
 import { JettonMinter } from '../../wrappers/JettonMinter';
 import { JettonMinterTests } from '../../wrappers/JettonMinterTests';
@@ -45,7 +45,14 @@ describe('DAO integrational', () => {
         minter_code = await compile('JettonMinter');
         voting_code = await compile('Voting');
         minter_update    = await compile('MinterUpdate');
+        let jwallet_code    = await compile('JettonWallet');
         blockchain = await Blockchain.create();
+
+        const _libs = Dictionary.empty(Dictionary.Keys.BigUint(256), Dictionary.Values.Cell());
+        _libs.set(BigInt(`0x${jwallet_code.hash().toString('hex')}`), jwallet_code);
+        const libs = beginCell().storeDictDirect(_libs).endCell();
+        blockchain.libs = libs;
+
         user1 = await blockchain.treasury('user1');
         user2 = await blockchain.treasury('user2');
         user3 = await blockchain.treasury('user3');
