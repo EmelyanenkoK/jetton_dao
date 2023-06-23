@@ -116,7 +116,6 @@ export class JettonMinter implements Contract {
         let forwardMsg = forwardMsgBuilder.endCell();
         let proposal   = Voting.createProposalBody(minimal_execution_amount, payload, description);
         return beginCell().storeUint(Op.minter.create_voting, 32).storeUint(0, 64) // op, queryId
-                          .storeUint(voting_type, 64)
                           .storeUint(expiration_date, 48)
                           .storeRef(proposal)
                           .storeUint(votingType, 64)
