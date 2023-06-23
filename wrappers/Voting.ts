@@ -1,4 +1,5 @@
 import { Address, beginCell, Cell, Contract, contractAddress, ContractProvider, Sender, SendMode, toNano } from 'ton-core';
+import { Op } from "../Ops";
 
 
 export type VotingConfig = {master: Address, voting_id:bigint};
@@ -50,7 +51,7 @@ export class Voting implements Contract {
     }
 
     static endVotingMessage(query_id:bigint = 0n) {
-        return beginCell().storeUint(0x66173a45, 32).storeUint(query_id, 64).endCell();
+        return beginCell().storeUint(Op.voting.end_voting, 32).storeUint(query_id, 64).endCell();
     }
 
     async sendEndVoting(provider: ContractProvider, via: Sender, value:bigint=toNano('0.5')) {

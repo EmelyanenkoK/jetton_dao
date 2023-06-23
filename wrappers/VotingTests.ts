@@ -1,5 +1,6 @@
 import { Address, beginCell, Cell, Contract, contractAddress, ContractProvider, Sender, SendMode, toNano } from 'ton-core';
 import { Voting, VotingConfig } from './Voting';
+import { Op } from '../Ops';
 
 export class VotingTests extends Voting {
 
@@ -22,7 +23,7 @@ export class VotingTests extends Voting {
                             proposal:Cell,
                             initiator:Address,
                             query_id:bigint = 0n) {
-        return beginCell().storeUint(0x182d8ddd,32)
+        return beginCell().storeUint(Op.voting.init_voting,32)
                           .storeUint(query_id, 64)
                           .storeUint(expiration_date, 48)
                           .storeUint(voting_type, 64)
@@ -55,7 +56,7 @@ export class VotingTests extends Voting {
                               confirm_vote:boolean = false,
                               query_id:bigint = 0n) {
 
-        return beginCell().storeUint(0x6edb1889, 32)
+        return beginCell().storeUint(Op.voting.submit_votes, 32)
                           .storeUint(query_id, 64)
                           .storeAddress(voter)
                           .storeUint(expiration_date, 48)

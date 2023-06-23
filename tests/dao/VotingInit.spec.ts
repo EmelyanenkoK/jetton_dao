@@ -6,6 +6,8 @@ import '@ton-community/test-utils';
 import { ActiveWallet, getRandomExp, getRandomInt, getRandomPayload, randomAddress } from "../utils";
 import { VotingTests } from "../../wrappers/VotingTests";
 import { JettonMinterTests } from "../../wrappers/JettonMinterTests";
+import { Op } from "../../Ops";
+import { Errors } from "../../Errors";
 
 let blockchain: Blockchain;
 let jwallet_code:Cell;
@@ -101,7 +103,7 @@ describe('Voting init unit tests', () => {
             from: master.address,
             on: voting.address,
             success: false,
-            exitCode: 0xf3
+            exitCode: Errors.voting.already_inited
         });
         expect(res.transactions).not.toHaveTransaction({
             from: voting.address,
@@ -133,7 +135,7 @@ describe('Voting init unit tests', () => {
             from: userWallet.address,
             on: voting.address,
             success: false,
-            exitCode:0xf4
+            exitCode:Errors.voting.unauthorized_init
         });
         expect(res.transactions).not.toHaveTransaction({
             from: voting.address,
