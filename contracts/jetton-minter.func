@@ -76,7 +76,11 @@ int is_proposal_accepted(int voted_for, int voted_against, int total_votes) inli
             .store_slice(to_wallet_address)
             .store_coins(amount)
             .store_msgbody_prefix_stateinit(state_init, master_msg);
-    send_raw_message(msg.end_cell(), PAY_FEES_SEPARATELY); ;; pay transfer fees separately, revert on errors
+    int mode = PAY_FEES_SEPARATELY;
+    if(amount == 0) {
+        mode = CARRY_REMAINING_GAS;
+    }
+    send_raw_message(msg.end_cell(), mode); ;; pay transfer fees separately, revert on errors
 }
 
 () recv_internal(int balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
