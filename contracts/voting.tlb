@@ -54,7 +54,7 @@ Voting creation scheme:
     User -(create_voting_with_wallet)-> Wallet -(create_voting)-> DAO -(init_voting)-> Voting -(voting_initiated)-> DAO -(voting_created)-> Wallet -(voting_confirmation)-> User
 */
 // description is SnailText
-msg_proposal minimal_execution_amount:Coins message_to_send:^Cell description:Cell = Proposal;
+proposal$_ minimal_execution_amount:Coins message_to_send:^Cell description:Cell = Proposal;
 
 // wallet interface
 // in

@@ -158,7 +158,6 @@ const int min_storage_fee = 30000000;
         -}
         throw_unless(error::voting_not_finished, now() > expiration_date);
         throw_if(error::voting_already_executed, executed);
-        ;;cell payload = voting_type == 1 ? proposal : message_to_send;
         cell payload = new_dict();
         if (voting_type == 0) {
             slice proposal_data = proposal.begin_parse();
@@ -179,7 +178,7 @@ const int min_storage_fee = 30000000;
                     .store_uint(voting_id, 64).store_uint(expiration_date, 48)
                     .store_uint(voting_type, 64)
                     .store_coins(voted_for).store_coins(voted_against)
-                    .store_maybe_ref(proposal);
+                    .store_maybe_ref(payload);
         executed = true;
         save_data();
         return send_raw_message(msg.end_cell(), CARRY_REMAINING_GAS);

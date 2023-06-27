@@ -1388,20 +1388,18 @@ describe('DAO integrational', () => {
             const chgMsg    = genMessage(DAO.address, adminChg);
 
             // Create voting
-            let createSimpleMsgVoting = await DAO.sendCreateSimpleMsgVoting(user1.getSender(),
+            let createVoting = await DAO.sendCreateSimpleMsgVoting(user1.getSender(),
                                        expirationDate,
                                        toNano('0.1'), // minimal_execution_amount
                                        chgMsg // payload
             );
             // Voting deploy message
             const voting = await votingContract(++votingId);
-            expect(createSimpleMsgVoting.transactions).toHaveTransaction({
+            expect(createVoting.transactions).toHaveTransaction({
                 from: DAO.address,
                 on: voting.address,
                 deploy: true
             });
-
-
 
             const user2JettonWallet = await userWallet(user2.address);
 
@@ -1411,6 +1409,8 @@ describe('DAO integrational', () => {
                                              true, false);
 
             blockchain.now = Number(expirationDate) + 1;
+            // await blockchain.setVerbosityForAddress(DAO.address, {blockchainLogs:true, vmLogs: 'vm_logs'});
+            // payload doesn't pass the filter. exit code 9, on load created_lt.
             const res = await voting.sendEndVoting(user2.getSender());
 
             expect(res.transactions).toHaveTransaction({
@@ -1465,6 +1465,7 @@ describe('DAO integrational', () => {
             });
 
             res = await DAO.sendCodeUpgrade(user1.getSender(), minter_update, votingUpdate);
+
             expect(res.transactions).toHaveTransaction({
                 from: user1.address,
                 on: DAO.address,
@@ -1482,7 +1483,7 @@ describe('DAO integrational', () => {
 
             // Voting code should update too
             expect((await DAO.getVotingCode()).equals(votingUpdate)).toBe(true);
-            //
+
             // Have to switch code back since we drag blockchain state
             await DAO.sendCodeUpgrade(user1.getSender(), minter_code, prevVoting);
             expect(res.transactions).toHaveTransaction({
@@ -1567,7 +1568,6 @@ describe('DAO integrational', () => {
             blockchain.now = Number(expirationDate) + 1;
 
             const voteData = await voting.getFullData();
-            // await blockchain.setVerbosityForAddress(DAO.address, {blockchainLogs:true, vmLogs: 'vm_logs'});
             const res = await voting.sendEndVoting(user1.getSender());
 
             expect(res.transactions).toHaveTransaction({
