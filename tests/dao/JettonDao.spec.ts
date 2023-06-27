@@ -1551,8 +1551,18 @@ describe('DAO integrational', () => {
                 expect(votingData.votedFor).toEqual(0n);
                 expect(votingData.votedAgainst).toEqual(0n);
                 expect(votingData.votingType).toEqual(voteType);
+
+                const resultsContractData = await votingResults.getData();
+                expect(resultsContractData.init).toEqual(true);
+                expect(resultsContractData.votingId).toEqual(votingId);
+                expect(resultsContractData.votesFor).toEqual(0n);
+                expect(resultsContractData.votesAgainst).toEqual(0n);
+                expect(resultsContractData.votingBody).toEqualCell(pollBody);
+                expect(resultsContractData.votingDuration).toEqual(duration);
+                expect(resultsContractData.daoAddress.equals(DAO.address)).toBe(true);
+                expect(resultsContractData.finished).toEqual(false);
         });
-        it('Send result vote won', async () => {
+        it('should vote and end with sending', async () => {
             let voting = await votingContract(votingId);
             const expirationDate = (await voting.getFullData()).expirationDate;
             const comp = await pickWinner(user1, user2);
@@ -1584,11 +1594,21 @@ describe('DAO integrational', () => {
             expect(res.transactions).toHaveTransaction({
                 from: DAO.address,
                 on: votingResults.address,
+                success: true,
                 body: JettonMinterTests.createVoteResult(votingId,
                                                          expirationDate,
                                                          voteData.votedFor,
                                                          voteData.votedAgainst)
             });
+
+            const resultsContractData = await votingResults.getData();
+            expect(resultsContractData.votingId).toEqual(votingId);
+            expect(resultsContractData.votesFor).toEqual(voteData.votedFor);
+            expect(resultsContractData.votesAgainst).toEqual(voteData.votedAgainst);
+            expect(resultsContractData.votingBody).toEqualCell(pollBody);
+            expect(resultsContractData.votingDuration).toEqual(duration);
+            expect(resultsContractData.daoAddress.equals(DAO.address)).toBe(true);
+            expect(resultsContractData.finished).toEqual(true);
         });
     });
 });

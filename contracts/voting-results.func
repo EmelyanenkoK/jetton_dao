@@ -27,8 +27,8 @@
       return (init?, voting_body, voting_duration, dao_address,
               finished?, voting_id, votes_for, votes_against);
     } else {
-       return (init?, voting_body, voting_duration, dao_address,
-        null(), null(), null(), null());
+        return (init?, voting_body, voting_duration, dao_address,
+                false, -1, 0, 0);
     }
 }
 () save_data(int init?, cell voting_body, int voting_duration, slice dao_address,
@@ -77,6 +77,7 @@
         int expiration_date = in_msg_body~load_uint(48);
         votes_for = in_msg_body~load_coins();
         votes_against = in_msg_body~load_coins();
+        finished? = true;
         return save_data(init?, voting_body, voting_duration, dao_address,
                 finished?, voting_id, votes_for, votes_against);
     }

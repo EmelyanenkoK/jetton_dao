@@ -26,4 +26,22 @@ export class VotingResults implements Contract {
         const init = {code, data};
         return new VotingResults(contractAddress(workchain, init), init);
     }
+
+/*
+      return (init?, voting_body, voting_duration, dao_address,
+              finished?, voting_id, votes_for, votes_against);
+*/
+    async getData(provider: ContractProvider) {
+        let { stack } = await provider.get('get_voting_results', []);
+        let init = stack.readBoolean();
+        let votingBody = stack.readCellOpt();
+        let votingDuration = stack.readNumber();
+        let daoAddress = stack.readAddress();
+        let finished = stack.readBoolean();
+        let votingId = stack.readBigNumber();
+        let votesFor = stack.readBigNumber();
+        let votesAgainst = stack.readBigNumber();
+        return {init, votingBody, votingDuration, daoAddress,
+                 finished, votingId, votesFor, votesAgainst};
+    }
 }
