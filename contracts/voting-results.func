@@ -21,7 +21,7 @@
 
     if(init?) {
       int finished? = cs~load_int(1);
-      int voting_id = cs~load_coins();
+      int voting_id = cs~load_uint(64);
       int votes_for = cs~load_coins();
       int votes_against = cs~load_coins();
       return (init?, voting_body, voting_duration, dao_address,
