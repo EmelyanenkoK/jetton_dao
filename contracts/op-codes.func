@@ -37,6 +37,10 @@ const int op::request_confirm_voting = 0x0222fdcb;
 const int op::provide_wallet_address = 0x2c76b973;
 const int op::take_wallet_address = 0xd1735400;
 
+const int op::provide_voting_results = 0x7546a34d;
+const int op::take_voting_results = 0xd1bb7471;
+
+
 ;; Keeper
 const int op::request_vote = 0x2bd63704;
 

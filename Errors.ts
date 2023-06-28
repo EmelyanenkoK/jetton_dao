@@ -53,6 +53,7 @@ export abstract class Errors {
     static readonly results = {
         already_finished : 0x2f5,
         unauthorized_vote_results : 0x2f6,
-        voting_id_mismatch : 0x2f7
+        voting_id_mismatch : 0x2f7,
+        results_discovery_fee_not_matched : 0x2f8
     }
 }

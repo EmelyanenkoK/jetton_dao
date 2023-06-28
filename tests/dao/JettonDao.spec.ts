@@ -1838,7 +1838,7 @@ describe('DAO integrational', () => {
             expect(resultsData.votesFor).toEqual(0n);
             expect(resultsData.votesAgainst).toEqual(0n);
         });
-        it('VotingResults should receive results', async () => {
+        it('VotingResults should receive the results', async () => {
             const sendVoteResRes = await blockchain.sendMessage(internal({
                 from: DAO.address,
                 to: votingResults.address,
@@ -1858,7 +1858,7 @@ describe('DAO integrational', () => {
             expect(resultsData.votesFor).toEqual(votedFor);
             expect(resultsData.votesAgainst).toEqual(votedAgainst);
         });
-        it('should not receive results once again', async () => {
+        it('should not receive the results once again', async () => {
             const sendVoteResRes = await blockchain.sendMessage(internal({
                 from: DAO.address,
                 to: votingResults.address,
