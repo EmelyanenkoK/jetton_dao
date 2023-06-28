@@ -265,10 +265,10 @@ int is_proposal_accepted(int voted_for, int voted_against, int total_votes) inli
             slice cs  = proposal.begin_parse();
             ;; expiration date in first 48 bits is useless?
             int voting_duration = cs~load_uint(48);
-            cell voting_body = cs~load_ref();
+            throw_unless(error::voting_already_finished, voting_duration > 0);
+            throw_unless(error::expiration_date_too_high, max_voting_duration > voting_duration);
             expiration_date = now() + voting_duration;
-            throw_unless(error::voting_already_finished, now() < expiration_date);
-            throw_unless(error::expiration_date_too_high, now() + max_voting_duration > expiration_date);
+            cell voting_body = cs~load_ref();
             cell state_init = calculate_dao_voting_state_init(my_address(), voting_id, voting_code);
             slice voting = calc_address(state_init);
             cell vr_state_init = calculate_voting_results_state_init(voting_body, voting_duration, my_address());
