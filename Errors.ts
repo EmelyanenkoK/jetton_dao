@@ -48,4 +48,11 @@ export abstract class Errors {
 		no_new_votes : 0x1f5,
 		unauthorized_request_vote : 0x1f4
 	}
+
+    // voting results errors
+    static readonly results = {
+        already_finished : 0x2f5,
+        unauthorized_vote_results : 0x2f6,
+        voting_id_mismatch : 0x2f7
+    }
 }

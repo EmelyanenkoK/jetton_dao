@@ -1607,14 +1607,14 @@ describe('DAO integrational', () => {
                                                      voteData.votedAgainst)
             });
 
-            const resultsContractData = await votingResults.getData();
-            expect(resultsContractData.votingId).toEqual(votingId);
-            expect(resultsContractData.votesFor).toEqual(voteData.votedFor);
-            expect(resultsContractData.votesAgainst).toEqual(voteData.votedAgainst);
-            expect(resultsContractData.votingBody).toEqualCell(pollBody);
-            expect(resultsContractData.votingDuration).toEqual(duration);
-            expect(resultsContractData.daoAddress.equals(DAO.address)).toBe(true);
-            expect(resultsContractData.finished).toEqual(true);
+            const resultsData = await votingResults.getData();
+            expect(resultsData.votingId).toEqual(votingId);
+            expect(resultsData.votesFor).toEqual(voteData.votedFor);
+            expect(resultsData.votesAgainst).toEqual(voteData.votedAgainst);
+            expect(resultsData.votingBody).toEqualCell(pollBody);
+            expect(resultsData.votingDuration).toEqual(duration);
+            expect(resultsData.daoAddress.equals(DAO.address)).toBe(true);
+            expect(resultsData.finished).toEqual(true);
         });
         it('should not create with zero duration', async () => {
             const voting = await votingContract(++votingId);
@@ -1697,11 +1697,11 @@ describe('DAO integrational', () => {
             expect(balanceAfter).toBeGreaterThanOrEqual(balanceBefore);
             console.log("Create voting balance increase:", fromNano((balanceAfter - balanceBefore)));
         });
-        let uninitedVotingResults: BlockchainSnapshot;
         let initBody: Cell;
         let sendVoteResBody: Cell;
-        it('VotingResults should be inited only from DAO', async () => {
-            // const voting = await votingContract(votingId + 1);
+        let votedFor: bigint;
+        let votedAgainst: bigint;
+        it('VotingResults should not be inited not from the DAO', async () => {
             duration = getRandomDuration();
             expirationDate = BigInt(blockchain.now! + duration);
             pollBody = getRandomPayload();
@@ -1710,25 +1710,30 @@ describe('DAO integrational', () => {
                                   .storeUint(0, 64).storeUint(votingId, 64)
                         .endCell();
 
+
+            const from = differentAddress(DAO.address)
             const createRes = await blockchain.sendMessage(internal({
-                from: user1.address,
-                to: votingResults.address,
+                from, to: votingResults.address,
                 value: toNano("0.1"),
                 body: initBody,
                 stateInit: votingResults.init
             }));
             expect(createRes.transactions).toHaveTransaction({
-                from: user1.address,
-                to: votingResults.address,
+                from, to: votingResults.address,
                 success: false,
                 exitCode: Errors.voting.unauthorized_init
             });
-            uninitedVotingResults = blockchain.snapshot();
+            const resultsData = await votingResults.getData();
+            expect(resultsData.votingId).toEqual(-1n); // doesn't know his voting id yet
+            expect(resultsData.daoAddress.equals(DAO.address)).toBe(true);
+            expect(resultsData.init).toEqual(false);
+            expect(resultsData.finished).toEqual(false);
+            expect(resultsData.votesFor).toEqual(0n);
+            expect(resultsData.votesAgainst).toEqual(0n);
         });
-        it('VotingResults should not receive results before init', async () => {
-            await blockchain.loadFrom(uninitedVotingResults);
-            let votedFor = getRandomTon(1, 1000);
-            let votedAgainst = getRandomTon(1, 1000);
+        it('VotingResults should not receive the results before init', async () => {
+            votedFor = getRandomTon(1, 1000);
+            votedAgainst = getRandomTon(1, 1000);
             sendVoteResBody = VotingResults.createVoteResult(votingId, votedFor, votedAgainst);
             const sendVoteResRes = await blockchain.sendMessage(internal({
                 from: DAO.address,
@@ -1742,8 +1747,14 @@ describe('DAO integrational', () => {
                 success: false,
                 exitCode: Errors.voting.not_inited
             });
+            const resultsData = await votingResults.getData();
+            expect(resultsData.votingId).toEqual(-1n);
+            expect(resultsData.init).toEqual(false);
+            expect(resultsData.finished).toEqual(false);
+            expect(resultsData.votesFor).toEqual(0n);
+            expect(resultsData.votesAgainst).toEqual(0n);
         });
-        it('VotingResults should be inited from DAO', async () => {
+        it('VotingResults should be inited from the DAO', async () => {
             const createRes = await blockchain.sendMessage(internal({
                 from: DAO.address,
                 to: votingResults.address,
@@ -1755,6 +1766,13 @@ describe('DAO integrational', () => {
                 to: votingResults.address,
                 success: true,
             });
+            const resultsData = await votingResults.getData();
+            expect(resultsData.votingId).toEqual(votingId);
+            expect(resultsData.daoAddress.equals(DAO.address)).toBe(true);
+            expect(resultsData.init).toEqual(true);
+            expect(resultsData.finished).toEqual(false);
+            expect(resultsData.votesFor).toEqual(0n);
+            expect(resultsData.votesAgainst).toEqual(0n);
         });
         it('VotingResults should not be inited twice', async () => {
             const createRes = await blockchain.sendMessage(internal({
@@ -1769,12 +1787,78 @@ describe('DAO integrational', () => {
                 success: false,
                 exitCode: Errors.voting.already_inited
             });
+            const resultsData = await votingResults.getData();
+            expect(resultsData.votingId).toEqual(votingId);
+            expect(resultsData.daoAddress.equals(DAO.address)).toBe(true);
+            expect(resultsData.init).toEqual(true);
+            expect(resultsData.finished).toEqual(false);
+            expect(resultsData.votesFor).toEqual(0n);
+            expect(resultsData.votesAgainst).toEqual(0n);
         });
-        it('VotingResults should not receive results before init', async () => {
-            await blockchain.loadFrom(uninitedVotingResults);
-            let votedFor = getRandomTon(1, 1000);
-            let votedAgainst = getRandomTon(1, 1000);
-            sendVoteResBody = VotingResults.createVoteResult(votingId, votedFor, votedAgainst);
+        it('VotingResults should not receive the results not from the DAO', async () => {
+            const from = differentAddress(DAO.address)
+            const sendVoteResRes = await blockchain.sendMessage(internal({
+                from, to: votingResults.address,
+                value: toNano("0.1"),
+                body: sendVoteResBody
+            }));
+            expect(sendVoteResRes.transactions).toHaveTransaction({
+                from, to: votingResults.address,
+                success: false,
+                exitCode: Errors.results.unauthorized_vote_results,
+            });
+            const resultsData = await votingResults.getData();
+            expect(resultsData.votingId).toEqual(votingId);
+            expect(resultsData.init).toEqual(true);
+            expect(resultsData.finished).toEqual(false);
+            expect(resultsData.votesFor).toEqual(0n);
+            expect(resultsData.votesAgainst).toEqual(0n);
+        });
+        it('VotingResults should not receive the results for not it\'s voting', async () => {
+            const sendVoteResIdLower = VotingResults.createVoteResult(votingId + 1n, votedFor, votedAgainst);
+            const sendVoteResIdHigher = VotingResults.createVoteResult(votingId + 1n, votedFor, votedAgainst);
+            for (const sendVoteResBody of [sendVoteResIdLower, sendVoteResIdHigher]) {
+                let sendVoteResRes = await blockchain.sendMessage(internal({
+                    from: DAO.address,
+                    to: votingResults.address,
+                    value: toNano("0.1"),
+                    body: sendVoteResBody
+                }));
+                expect(sendVoteResRes.transactions).toHaveTransaction({
+                    from: DAO.address,
+                    to: votingResults.address,
+                    success: false,
+                    exitCode: Errors.results.voting_id_mismatch,
+                });
+            }
+            const resultsData = await votingResults.getData();
+            expect(resultsData.votingId).toEqual(votingId);
+            expect(resultsData.init).toEqual(true);
+            expect(resultsData.finished).toEqual(false);
+            expect(resultsData.votesFor).toEqual(0n);
+            expect(resultsData.votesAgainst).toEqual(0n);
+        });
+        it('VotingResults should receive results', async () => {
+            const sendVoteResRes = await blockchain.sendMessage(internal({
+                from: DAO.address,
+                to: votingResults.address,
+                value: toNano("0.1"),
+                body: sendVoteResBody
+            }));
+            expect(sendVoteResRes.transactions).toHaveTransaction({
+                from: DAO.address,
+                to: votingResults.address,
+                success: true,
+            });
+            const resultsData = await votingResults.getData();
+            expect(resultsData.votingId).toEqual(votingId);
+            expect(resultsData.daoAddress.equals(DAO.address)).toBe(true);
+            expect(resultsData.init).toEqual(true);
+            expect(resultsData.finished).toEqual(true);
+            expect(resultsData.votesFor).toEqual(votedFor);
+            expect(resultsData.votesAgainst).toEqual(votedAgainst);
+        });
+        it('should not receive results once again', async () => {
             const sendVoteResRes = await blockchain.sendMessage(internal({
                 from: DAO.address,
                 to: votingResults.address,
@@ -1785,8 +1869,15 @@ describe('DAO integrational', () => {
                 from: DAO.address,
                 to: votingResults.address,
                 success: false,
-                exitCode: Errors.voting.not_inited
+                exitCode: Errors.results.already_finished
             });
+            const resultsData = await votingResults.getData();
+            expect(resultsData.votingId).toEqual(votingId);
+            expect(resultsData.daoAddress.equals(DAO.address)).toBe(true);
+            expect(resultsData.init).toEqual(true);
+            expect(resultsData.finished).toEqual(true);
+            expect(resultsData.votesFor).toEqual(votedFor);
+            expect(resultsData.votesAgainst).toEqual(votedAgainst);
         });
         it('should not create type 1 voting if only polls', async () => {
             // edit file ../../contracts/external_params.func, set line 8 to
