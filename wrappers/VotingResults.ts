@@ -51,6 +51,16 @@ export class VotingResults implements Contract {
         });
     }
 
+    async sendProvideVoteResult(provider: ContractProvider, via: Sender, value: bigint = toNano('0.1'), query_id: bigint | number = 0) {
+        await provider.internal(via, {
+            value,
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            body: beginCell().storeUint(Op.results.provide_voting_results, 32)
+                             .storeUint(query_id, 64)
+                             .endCell(),
+        });
+    }
+
 /*
       return (init?, voting_body, voting_duration, dao_address,
               finished?, voting_id, votes_for, votes_against);
@@ -66,6 +76,29 @@ export class VotingResults implements Contract {
         let votesFor = stack.readBigNumber();
         let votesAgainst = stack.readBigNumber();
         return {init, votingBody, votingDuration, daoAddress,
+                 finished, votingId, votesFor, votesAgainst};
+    }
+
+/*
+    take_voting_results query_id:uint64 voting_body:^Cell voting_duration:uint48
+                        dao_address:MsgAddress finished:Bool voting_id:uint64
+                        votes_for:Coins votes_against:Coins
+                        = InternalMsgBody;
+*/
+    static parseProvidedVoteResult(msgBody: Cell) {
+        let cs = msgBody.beginParse();
+        let op = cs.loadUint(32); // Op
+        if (op != Op.results.provide_voting_results)
+            throw new Error(`Invalid op: ${op}`);
+        cs.loadUint(64); // query_id
+        let votingBody = cs.loadRef();
+        let votingDuration = cs.loadUintBig(48);
+        let daoAddress = cs.loadAddress();
+        let finished = cs.loadBoolean();
+        let votingId = cs.loadUintBig(64);
+        let votesFor = cs.loadCoins();
+        let votesAgainst = cs.loadCoins();
+        return {votingBody, votingDuration, daoAddress,
                  finished, votingId, votesFor, votesAgainst};
     }
 }
