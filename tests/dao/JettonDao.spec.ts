@@ -13,6 +13,7 @@ import { VotingTests } from '../../wrappers/VotingTests';
 import { VoteKeeperTests } from '../../wrappers/VoteKeeperTests';
 import { Op } from '../../Ops';
 import { Errors } from '../../Errors';
+import { readFileSync, writeFileSync } from 'fs';
 
 
 describe('DAO integrational', () => {
@@ -1375,7 +1376,12 @@ describe('DAO integrational', () => {
 
         it('DAO self-admin case', async () => {
             const prevAdmin = await DAO.getAdminAddress();
-            await DAO.sendChangeAdmin(user1.getSender(), DAO.address);
+            let res = await DAO.sendChangeAdmin(user1.getSender(), DAO.address);
+            expect(res.transactions).toHaveTransaction({
+                from: user1.address,
+                to: DAO.address,
+                success: true,
+            });
 
             expirationDate = getRandomExp(blockchain.now);
 
@@ -1411,7 +1417,7 @@ describe('DAO integrational', () => {
             blockchain.now = Number(expirationDate) + 1;
             // await blockchain.setVerbosityForAddress(DAO.address, {blockchainLogs:true, vmLogs: 'vm_logs'});
             // payload doesn't pass the filter. exit code 9, on load created_lt.
-            const res = await voting.sendEndVoting(user2.getSender());
+            res = await voting.sendEndVoting(user2.getSender());
 
             expect(res.transactions).toHaveTransaction({
                 from: DAO.address,
@@ -1499,20 +1505,20 @@ describe('DAO integrational', () => {
             let pollBody: Cell;
             let proposal: Cell;
 
-            it('should create new type 1 voting', async () => {
+            it('should create a new type 1 voting', async () => {
                 duration = getRandomInt(10, 1200);
                 expirationDate = BigInt(blockchain.now! + duration);
                 let voting = await votingContract(++votingId);
                 pollBody = beginCell().storeStringTail("Is DAO related to Daoism?").storeUint(123, 8).endCell();
                 proposal = Voting.createPollProposal(duration, pollBody);
 
-                let createSimpleMsgVoting = await DAO.sendCreatePollVoting(user1.getSender(), duration, pollBody);
                 votingResults = blockchain.openContract(VotingResults.createFromConfig({
                     dao_address: DAO.address,
                     voting_body: pollBody,
                     voting_duration: duration
                 }, voting_results_code));
 
+                let createSimpleMsgVoting = await DAO.sendCreatePollVoting(user1.getSender(), duration, pollBody);
                 // Voting deploy message
                 expect(createSimpleMsgVoting.transactions).toHaveTransaction({
                     from: DAO.address,
@@ -1609,6 +1615,47 @@ describe('DAO integrational', () => {
             expect(resultsContractData.votingDuration).toEqual(duration);
             expect(resultsContractData.daoAddress.equals(DAO.address)).toBe(true);
             expect(resultsContractData.finished).toEqual(true);
+        });
+        it('should not create type 1 voting if only polls', async () => {
+            // edit file ../../contracts/external_params.func, set line 8 to
+            // const int external_param::only_polls = 1;
+            // recompile
+            // and edit back to
+            // const int external_param::only_polls = 0;
+            let _minter_code: Cell;
+            const path = "/../../contracts/external_params.func";
+            let text = readFileSync(__dirname + path, 'utf8');
+            var edited = text.replace(/only_polls = 0/g, 'only_polls = -1');
+            writeFileSync(__dirname + path, edited, 'utf8');
+            _minter_code = await compile("JettonMinter");
+            // back to normal
+            writeFileSync(__dirname + path, text, 'utf8');
+            let _DAO = blockchain.openContract(
+                 JettonMinter.createFromConfig(
+                   {
+                     admin: user1.address,
+                     content: defaultContent,
+                     voting_code: voting_code,
+                   }, _minter_code));
+
+            await _DAO.sendDeploy(user1.getSender(), toNano('1'));
+
+            expect(_DAO.address.equals(DAO.address)).toBe(false);
+            expect(user1.address.equals(await _DAO.getAdminAddress())).toBe(true);
+
+            const payload  = getRandomPayload();
+            const winMsg   = genMessage(user1.address, payload);
+            const createVotingRes = await _DAO.sendCreateSimpleMsgVoting(user1.getSender(),
+                expirationDate,
+                toNano('0.1'), // minimal_execution_amount
+                winMsg // payload
+            );
+            expect(createVotingRes.transactions).toHaveTransaction({
+                from: user1.address,
+                to: _DAO.address,
+                success: false,
+                exitCode: Errors.minter.forbidden_vote_id
+            });
         });
     });
 });

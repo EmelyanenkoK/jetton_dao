@@ -25,7 +25,8 @@ export abstract class Errors {
 		unauthorized_change_content_request : 77,
 		unauthorized_vote_execution : 78,
 		unauthorized_code_upgrade_request : 79,
-		voting_discovery_fee_not_matched : 80
+		voting_discovery_fee_not_matched : 80,
+        forbidden_vote_id : 81
 	}
 	
 	// voting errors
