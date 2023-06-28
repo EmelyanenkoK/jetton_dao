@@ -82,6 +82,10 @@ export const getRandomExp = (from:number = Math.floor(Date.now() / 1000)) => {
     return BigInt(from + getRandomInt(10, 12));
 }
 
+export const getRandomDuration = (max = 2592000) => {
+    return getRandomInt(1, max);
+}
+
 export const renewExp = (cur:bigint) => {
     return Math.floor(Date.now() / 1000) >= cur ? getRandomExp(Number(cur)) : cur;
 }

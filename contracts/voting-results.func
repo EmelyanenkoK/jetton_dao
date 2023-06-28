@@ -74,7 +74,6 @@
         throw_unless(error::unauthorized_vote_results, equal_slice_bits(sender_address, dao_address));
         int incoming_voting_id = in_msg_body~load_uint(64);
         throw_unless(error::voting_id_mismatch , voting_id == incoming_voting_id);
-        int expiration_date = in_msg_body~load_uint(48);
         votes_for = in_msg_body~load_coins();
         votes_against = in_msg_body~load_coins();
         finished? = true;

@@ -57,7 +57,7 @@ describe('Voting init unit tests', () => {
         expect(res.transactions).toHaveTransaction({
             from: voting.address,
             on: master.address,
-            body: JettonMinterTests.createSimpleMsgVotingInitiated(votingId, expirationDate, userWallet.address)
+            body: JettonMinterTests.createVotingInitiated(votingId, expirationDate, userWallet.address)
 
         });
         const votingData = await voting.getFullData();
@@ -108,7 +108,7 @@ describe('Voting init unit tests', () => {
         expect(res.transactions).not.toHaveTransaction({
             from: voting.address,
             on: userWallet.address,
-            body: JettonMinterTests.createSimpleMsgVotingInitiated(votingId, expirationDate, userWallet.address)
+            body: JettonMinterTests.createVotingInitiated(votingId, expirationDate, userWallet.address)
         });
         votingId++;
  
@@ -140,7 +140,7 @@ describe('Voting init unit tests', () => {
         expect(res.transactions).not.toHaveTransaction({
             from: voting.address,
             on: userWallet.address,
-            body: JettonMinterTests.createSimpleMsgVotingInitiated(votingId, expirationDate, userWallet.address)
+            body: JettonMinterTests.createVotingInitiated(votingId, expirationDate, userWallet.address)
 
         });
  

@@ -27,6 +27,30 @@ export class VotingResults implements Contract {
         return new VotingResults(contractAddress(workchain, init), init);
     }
 
+    static createVoteResult(votingId: bigint | number,
+                            votedFor: bigint,
+                            votedAgainst: bigint,
+                            query_id: bigint | number = 0) {
+        return beginCell().storeUint(Op.minter.send_vote_result, 32).storeUint(query_id, 64)
+                          .storeUint(votingId, 64).storeCoins(votedFor)
+                          .storeCoins(votedAgainst)
+               .endCell();
+    }
+
+    async sendVoteResult(provider: ContractProvider,
+                         via: Sender,
+                         votingId: bigint | number,
+                         votedFor: bigint,
+                         votedAgainst: bigint,
+                         value: bigint = toNano('0.1'),
+                         query_id: bigint | number = 0) {
+        await provider.internal(via, {
+            value,
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            body: VotingResults.createVoteResult(votingId, votedFor, votedAgainst, query_id),
+        });
+    }
+
 /*
       return (init?, voting_body, voting_duration, dao_address,
               finished?, voting_id, votes_for, votes_against);
