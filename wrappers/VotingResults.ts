@@ -7,6 +7,17 @@ export type VotingResultsConfig = {
     dao_address: Address,
 };
 
+export type VotingResultsData = {
+    init: boolean;
+    votingBody: Cell;
+    votingDuration: number;
+    daoAddress: Address;
+    finished: boolean;
+    votingId: bigint;
+    votesFor: bigint;
+    votesAgainst: bigint;
+}
+
 export class VotingResults implements Contract {
     constructor(readonly address: Address, readonly init?: { code: Cell; data: Cell }) {}
 
@@ -68,7 +79,7 @@ export class VotingResults implements Contract {
     async getData(provider: ContractProvider) {
         let { stack } = await provider.get('get_voting_results', []);
         let init = stack.readBoolean();
-        let votingBody = stack.readCellOpt();
+        let votingBody = stack.readCell();
         let votingDuration = stack.readNumber();
         let daoAddress = stack.readAddress();
         let finished = stack.readBoolean();
@@ -78,27 +89,38 @@ export class VotingResults implements Contract {
         return {init, votingBody, votingDuration, daoAddress,
                  finished, votingId, votesFor, votesAgainst};
     }
-
 /*
     take_voting_results query_id:uint64 voting_body:^Cell voting_duration:uint48
                         dao_address:MsgAddress finished:Bool voting_id:uint64
                         votes_for:Coins votes_against:Coins
                         = InternalMsgBody;
 */
-    static parseProvidedVoteResult(msgBody: Cell) {
+    static parseProvidedVoteResult(msgBody: Cell): VotingResultsData {
         let cs = msgBody.beginParse();
         let op = cs.loadUint(32); // Op
-        if (op != Op.results.provide_voting_results)
+        if (op != Op.results.take_voting_results)
             throw new Error(`Invalid op: ${op}`);
         cs.loadUint(64); // query_id
+        let init = cs.loadBit();
         let votingBody = cs.loadRef();
-        let votingDuration = cs.loadUintBig(48);
+        let votingDuration = cs.loadUint(48);
         let daoAddress = cs.loadAddress();
-        let finished = cs.loadBoolean();
-        let votingId = cs.loadUintBig(64);
-        let votesFor = cs.loadCoins();
-        let votesAgainst = cs.loadCoins();
-        return {votingBody, votingDuration, daoAddress,
+        let finished: boolean;
+        let votingId: bigint;
+        let votesFor: bigint;
+        let votesAgainst: bigint;
+        if (!init) {
+            finished = false;
+            votingId = -1n;
+            votesFor = 0n;
+            votesAgainst = 0n;
+        } else {
+            finished = cs.loadBit();
+            votingId = cs.loadUintBig(64);
+            votesFor = cs.loadCoins();
+            votesAgainst = cs.loadCoins();
+        }
+        return {init, votingBody, votingDuration, daoAddress,
                  finished, votingId, votesFor, votesAgainst};
     }
 }

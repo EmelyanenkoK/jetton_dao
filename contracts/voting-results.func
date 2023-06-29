@@ -89,9 +89,8 @@ const int provide_results_gas_consumption = 10000000; ;; 0.01 TON
         cs~skip_bits(1); ;; skip extracurrency collection
         cs~load_coins(); ;; skip ihr_fee
         int fwd_fee = muldiv(cs~load_coins(), 3, 2);
-        throw_unless(error::results_discovery_fee_not_matched, msg_value > fwd_fee + provide_results_gas_consumption);
+        throw_unless(error::results_discovery_fee_not_matched, msg_value >= fwd_fee + provide_results_gas_consumption);
         slice ds = get_data().begin_parse();
-        ds~load_int(1); ;; skip init?
         var msg = begin_cell()
                 .store_msg_flag(msg_flag::bounceable)
                 .store_slice(sender_address)
@@ -102,7 +101,7 @@ const int provide_results_gas_consumption = 10000000; ;; 0.01 TON
                     .store_query_id(query_id)
                     .store_slice(ds)
                    .end_cell());
-        send_raw_message(msg.end_cell(), CARRY_REMAINING_GAS);
+        return send_raw_message(msg.end_cell(), CARRY_REMAINING_GAS);
     }
     throw(error::unknown_op);
 }

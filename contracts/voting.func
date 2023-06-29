@@ -166,6 +166,7 @@ const int min_storage_fee = 30000000;
             throw_unless(error::not_enough_money, msg_value >= minimal_execution_amount);
         }
         if (voting_type == 1) {
+            throw_unless(error::not_enough_money, msg_value >= send_result_chain_cost);
             payload = proposal;
         }
         var msg = begin_cell()

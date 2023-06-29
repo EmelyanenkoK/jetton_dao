@@ -1,4 +1,4 @@
-import { Blockchain, SandboxContract, TreasuryContract, Verbosity, internal, BlockchainSnapshot } from '@ton-community/sandbox';
+import { Blockchain, SandboxContract, TreasuryContract, Verbosity, internal, printTransactionFees } from '@ton-community/sandbox';
 import { Cell, toNano, fromNano, beginCell, storeMessageRelaxed, Address, SendMode, OpenedContract, AccountStorage, Dictionary } from 'ton-core';
 import { JettonWallet } from '../../wrappers/JettonWallet';
 import { JettonMinter } from '../../wrappers/JettonMinter';
@@ -1879,6 +1879,114 @@ describe('DAO integrational', () => {
             expect(resultsData.votesFor).toEqual(votedFor);
             expect(resultsData.votesAgainst).toEqual(votedAgainst);
         });
+        let voting: SandboxContract<Voting>;
+        it('should create voting', async () => {
+            voting = await votingContract(++votingId);
+            duration = getRandomDuration();
+            expirationDate = BigInt(blockchain.now! + duration);
+            pollBody = getRandomPayload();
+            votingResults = await resultsContract(duration, pollBody);
+            const createRes = await DAO.sendCreatePollVoting(user1.getSender(), duration, pollBody);
+            expect(createRes.transactions).toHaveTransaction({
+                from: DAO.address,
+                to: voting.address,
+                success: true,
+                deploy: true
+            });
+            expect(createRes.transactions).toHaveTransaction({
+                from: DAO.address,
+                to: votingResults.address,
+                success: true,
+                deploy: true
+            });
+        });
+        it('VotingResults should provide empty results', async () => {
+            const resultsData = await votingResults.getData();
+            const balanceBefore = (await blockchain.getContract(votingResults.address)).balance;
+            const provideResult = await votingResults.sendProvideVoteResult(user1.getSender());
+            expect(provideResult.transactions).toHaveTransaction({
+                from: user1.address,
+                to: votingResults.address,
+                op: Op.results.provide_voting_results,
+                success: true
+            });
+            const balanceAfter = (await blockchain.getContract(votingResults.address)).balance;
+            expect(balanceAfter).toBeGreaterThanOrEqual(balanceBefore);
+
+            let responseBody: Cell;
+            expect(provideResult.transactions).toHaveTransaction({
+                from: votingResults.address,
+                to: user1.address,
+                op: Op.results.take_voting_results,
+                body: (body) => { responseBody = body!; return true; },
+                success: true,
+            });
+            const parsedResponse = VotingResults.parseProvidedVoteResult(responseBody!);
+            expect(parsedResponse.votingId).toEqual(resultsData.votingId);
+            expect(parsedResponse.votesFor).toEqual(resultsData.votesFor);
+            expect(parsedResponse.votesAgainst).toEqual(resultsData.votesAgainst);
+            expect(parsedResponse.finished).toEqual(resultsData.finished);
+            expect(parsedResponse.votingDuration).toEqual(resultsData.votingDuration);
+            expect(parsedResponse.daoAddress.equals(resultsData.daoAddress)).toBe(true);
+            expect(parsedResponse.init).toEqual(resultsData.init);
+            expect(parsedResponse.votingBody).toEqualCell(resultsData.votingBody!);
+        });
+        const SEND_RESULT_CHAIN_COST = toNano("0.025");
+        const PROVIDE_RESULTS_GAS_CONSUMPTION = toNano("0.01");
+        const fwd_fee = 1000008n;
+        it('should not end if not enough gas for executing send result', async () => {
+            blockchain.now = Number(expirationDate + 1n);
+
+            const endRes = await voting.sendEndVoting(user1.getSender(), SEND_RESULT_CHAIN_COST - 1n);
+            expect(endRes.transactions).toHaveTransaction({
+                from: user1.address,
+                to: voting.address,
+                success: false,
+                exitCode: Errors.voting.not_enough_money
+            });
+
+            const endRes2 = await voting.sendEndVoting(user1.getSender(), SEND_RESULT_CHAIN_COST);
+            // no transactions with out of gas or any other errors
+            expect(endRes2.transactions).not.toHaveTransaction({
+                success: false,
+            });
+        });
+        it('should not provide results if not enough gas', async () => {
+            const provideResult = await votingResults.sendProvideVoteResult(user1.getSender(), PROVIDE_RESULTS_GAS_CONSUMPTION + fwd_fee - 1n);
+            expect(provideResult.transactions).toHaveTransaction({
+                from: user1.address,
+                to: votingResults.address,
+                op: Op.results.provide_voting_results,
+                success: false,
+                exitCode: Errors.results.results_discovery_fee_not_matched
+            });
+        });
+        it('should provide results', async () => {
+            let resultsData = await votingResults.getData();
+            const provideResult = await votingResults.sendProvideVoteResult(user1.getSender(), PROVIDE_RESULTS_GAS_CONSUMPTION + fwd_fee);
+            let responseBody: Cell;
+            expect(provideResult.transactions).toHaveTransaction({
+                from: votingResults.address,
+                to: user1.address,
+                success: true,
+                body: (body) => { responseBody = body!; return true; },
+            });
+            const parsedResponse = VotingResults.parseProvidedVoteResult(responseBody!);
+            expect(parsedResponse.votingId).toEqual(resultsData.votingId);
+            expect(parsedResponse.votesFor).toEqual(resultsData.votesFor);
+            expect(parsedResponse.votesAgainst).toEqual(resultsData.votesAgainst);
+            expect(parsedResponse.finished).toEqual(resultsData.finished);
+            expect(parsedResponse.votingDuration).toEqual(resultsData.votingDuration);
+            expect(parsedResponse.daoAddress.equals(resultsData.daoAddress)).toBe(true);
+            expect(parsedResponse.init).toEqual(resultsData.init);
+            expect(parsedResponse.votingBody).toEqualCell(resultsData.votingBody!);
+        });
+
+        // TODO: more checks for gas consumptions
+        // TODO: calculate gas consumption for providing results
+        // TODO: test with votings with the same body and durationthe 
+        // TODO: test with huge proposal. will it break something?
+
         it('should not create type 1 voting if only polls', async () => {
             // edit file ../../contracts/external_params.func, set line 8 to
             //  const int external_param::only_polls = 1;
