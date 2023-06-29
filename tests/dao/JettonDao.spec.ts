@@ -8,7 +8,7 @@ import { VotingResults } from '../../wrappers/VotingResults';
 import { VoteKeeper } from '../../wrappers/VoteKeeper';
 import '@ton-community/test-utils';
 import { compile } from '@ton-community/blueprint';
-import { differentAddress, getRandom, getRandomDuration, getRandomExp, getRandomInt, getRandomPayload, getRandomTon, voteCtx, ActiveWallet, ActiveJettonWallet, pickWinnerResult, sortBalanceResult } from "../utils";
+import { assertVoteChain, differentAddress, getRandom, getRandomDuration, getRandomExp, getRandomInt, getRandomPayload, getRandomTon, voteCtx, ActiveWallet, ActiveJettonWallet, pickWinnerResult, sortBalanceResult } from "../utils";
 import { VotingTests } from '../../wrappers/VotingTests';
 import { VoteKeeperTests } from '../../wrappers/VoteKeeperTests';
 import { Op } from '../../Ops';
@@ -415,46 +415,46 @@ describe('DAO integrational', () => {
 
     //    });
 
-    //    it('jetton owner can vote against', async () => {
+       it('jetton owner can vote against', async () => {
 
-    //        let voting     = await votingContract(votingId);
-    //        let votingData = await voting.getData();
-    //        let voteCtx    = votes[Number(votingId)];
+           let voting     = await votingContract(votingId);
+           let votingData = await voting.getData();
+           let voteCtx    = votes[Number(votingId)];
 
-    //        expect(votingData.init).toEqual(voteCtx.init);
-    //        expect(votingData.votedFor).toEqual(voteCtx.votedFor);
-    //        expect(votingData.votedAgainst).toEqual(voteCtx.votedAgainst);
+           expect(votingData.init).toEqual(voteCtx.init);
+           expect(votingData.votedFor).toEqual(voteCtx.votedFor);
+           expect(votingData.votedAgainst).toEqual(voteCtx.votedAgainst);
 
-    //        const user3JettonWallet = await userWallet(user3.address);
-    //        /*
-    //        const voteRes           = await user3JettonWallet.sendVote(user3.getSender(), voting.address, expirationDate, false, false);
-
-
-    //        expect(voteRes.transactions).toHaveTransaction({ //notification
-    //                    from: voting.address,
-    //                    on: user3.address,
-    //                    // excesses 0xd53276db, query_id
-    //                    body: beginCell().storeUint(0xd53276db, 32).storeUint(0, 64).endCell()
-    //                });
-    //        */
-    //        const res = await assertVoteChain(user3, user3JettonWallet,
-    //                                          0n,
-    //                                          initialUser3Balance,
-    //                                          voting.address,
-    //                                          expirationDate, false, false);
+           const user3JettonWallet = await userWallet(user3.address);
+           /*
+           const voteRes           = await user3JettonWallet.sendVote(user3.getSender(), voting.address, expirationDate, false, false);
 
 
+           expect(voteRes.transactions).toHaveTransaction({ //notification
+                       from: voting.address,
+                       on: user3.address,
+                       // excesses 0xd53276db, query_id
+                       body: beginCell().storeUint(0xd53276db, 32).storeUint(0, 64).endCell()
+                   });
+           */
+           const res = await assertVoteChain(user3, user3JettonWallet,
+                                             0n,
+                                             initialUser3Balance,
+                                             voting.address,
+                                             expirationDate, false, false);
 
-    //        voteCtx.votedAgainst += initialUser3Balance;
 
-    //        assertKeeper(voting.address, user3JettonWallet, voteCtx.votedAgainst);
 
-    //        votingData     = await voting.getData();
-    //        expect(votingData.init).toEqual(voteCtx.init);
-    //        expect(votingData.votedFor).toEqual(voteCtx.votedFor);
-    //        expect(votingData.votedAgainst).toEqual(voteCtx.votedAgainst);
+           voteCtx.votedAgainst += initialUser3Balance;
 
-    //    });
+           assertKeeper(voting.address, user3JettonWallet, voteCtx.votedAgainst);
+
+           votingData     = await voting.getData();
+           expect(votingData.init).toEqual(voteCtx.init);
+           expect(votingData.votedFor).toEqual(voteCtx.votedFor);
+           expect(votingData.votedAgainst).toEqual(voteCtx.votedAgainst);
+
+       });
 
     //    it('jetton owner can not transfer just after voting', async () => {
     //        const user1JettonWallet = await userWallet(user1.address);
@@ -1932,7 +1932,7 @@ describe('DAO integrational', () => {
             expect(parsedResponse.votingBody).toEqualCell(resultsData.votingBody!);
         });
         const SEND_RESULT_CHAIN_COST = toNano("0.025");
-        const PROVIDE_RESULTS_GAS_CONSUMPTION = toNano("0.01");
+        const PROVIDE_RESULTS_GAS_CONSUMPTION = 6000000n;
         const fwd_fee = 1000008n;
         it('should not end if not enough gas for executing send result', async () => {
             blockchain.now = Number(expirationDate + 1n);
@@ -1982,51 +1982,152 @@ describe('DAO integrational', () => {
             expect(parsedResponse.votingBody).toEqualCell(resultsData.votingBody!);
         });
 
-        // TODO: more checks for gas consumptions
-        // TODO: calculate gas consumption for providing results
-        // TODO: test with votings with the same body and durationthe 
-        // TODO: test with huge proposal. will it break something?
+        describe('Voting Results frontrun attack', () => {
+            let voting1: SandboxContract<Voting>;
+            let voting2: SandboxContract<Voting>;
+            let expirationDate1: bigint;
+            let expirationDate2: bigint;
+            it('should create 2 votings with same body and duration', async () => {
+                voting1 = await votingContract(++votingId);
+                duration = getRandomDuration() + 10;  // move range from 0..n to 10..n+10
+                pollBody = getRandomPayload();
+                // SAME voting results contract for both votings
+                votingResults = await resultsContract(duration, pollBody);
+                expirationDate1 = BigInt(blockchain.now! + duration);
+                const createRes1 = await DAO.sendCreatePollVoting(user1.getSender(), duration, pollBody);
+                expect(createRes1.transactions).toHaveTransaction({
+                    from: DAO.address,
+                    to: voting1.address,
+                    success: true,
+                    deploy: true
+                });
+                expect(createRes1.transactions).toHaveTransaction({
+                    from: DAO.address,
+                    to: votingResults.address,
+                    success: true,
+                    deploy: true
+                });
+                const votingData1 = await voting1.getFullData();
+                expect(votingData1.votingId).toEqual(votingId);
+                expect(votingData1.expirationDate).toEqual(expirationDate1);
+                // imagine user2 seeing it in a second
+                blockchain.now = blockchain.now! + 1;
+                voting2 = await votingContract(++votingId);
+                expirationDate2 = BigInt(blockchain.now! + duration);
+                const createRes2 = await DAO.sendCreatePollVoting(user2.getSender(), duration, pollBody);
+                expect(createRes2.transactions).toHaveTransaction({
+                    from: DAO.address,
+                    to: voting2.address,
+                    success: true,
+                    deploy: true
+                });
+                expect(createRes2.transactions).toHaveTransaction({
+                    from: DAO.address,
+                    to: votingResults.address,
+                    success: false,
+                    exitCode: Errors.voting.already_inited
+                });
+                const votingData2 = await voting2.getFullData();
+                expect(votingData2.votingId).toEqual(votingId);
+                expect(votingData2.expirationDate).toEqual(expirationDate2);
 
-        it('should not create type 1 voting if only polls', async () => {
-            // edit file ../../contracts/external_params.func, set line 8 to
-            //  const int external_param::only_polls = 1;
-            // recompile
-            // and edit back to
-            //  const int external_param::only_polls = 0;
-            let _minter_code: Cell;
-            const path = "/../../contracts/external_params.func";
-            let text = readFileSync(__dirname + path, 'utf8');
-            var edited = text.replace(/only_polls = 0/g, 'only_polls = -1');
-            writeFileSync(__dirname + path, edited, 'utf8');
-            _minter_code = await compile("JettonMinter");
-            // back to normal
-            writeFileSync(__dirname + path, text, 'utf8');
-            let _DAO = blockchain.openContract(
-                 JettonMinter.createFromConfig(
-                   {
-                     admin: user1.address,
-                     content: defaultContent,
-                     voting_code: voting_code,
-                   }, _minter_code));
-
-            await _DAO.sendDeploy(user1.getSender(), toNano('1'));
-
-            expect(_DAO.address.equals(DAO.address)).toBe(false);
-            expect(user1.address.equals(await _DAO.getAdminAddress())).toBe(true);
-
-            const payload  = getRandomPayload();
-            const winMsg   = genMessage(user1.address, payload);
-            const createVotingRes = await _DAO.sendCreateSimpleMsgVoting(user1.getSender(),
-                expirationDate,
-                toNano('0.1'), // minimal_execution_amount
-                winMsg // payload
-            );
-            expect(createVotingRes.transactions).toHaveTransaction({
-                from: user1.address,
-                to: _DAO.address,
-                success: false,
-                exitCode: Errors.minter.forbidden_vote_id
+                const resultsData = await votingResults.getData();
+                expect(resultsData.votingId).toEqual(votingId - 1n);
+                expect(resultsData.votingBody).toEqualCell(pollBody);
+                expect(resultsData.votingDuration).toEqual(duration);
+                expect(resultsData.finished).toEqual(false);
+                expect(resultsData.votesFor).toEqual(0n);
+                expect(resultsData.votesAgainst).toEqual(0n);
+                expect(resultsData.daoAddress.equals(DAO.address)).toBe(true);
             });
+            it('should vote differently in both votings', async () => {
+                const user3JettonWallet = await userWallet(user3.address);
+                // first - true, second - false
+                await assertVoteChain(user3, user3JettonWallet, 0n,
+                                      initialUser3Balance, voting1.address,
+                                      expirationDate1, true, false);
+                await assertVoteChain(user3, user3JettonWallet, 0n,
+                                      initialUser3Balance, voting2.address,
+                                      expirationDate2, false, false);
+                const votingData1 = await voting1.getFullData();
+                expect(votingData1.votedFor).toEqual(initialUser3Balance);
+                expect(votingData1.votedAgainst).toEqual(0n);
+                const votingData2 = await voting2.getFullData();
+                expect(votingData2.votedFor).toEqual(0n);
+                expect(votingData2.votedAgainst).toEqual(initialUser3Balance);
+            });
+            it('second voting should finish earlier with error on results side', async () => {
+                blockchain.now = Number(expirationDate2 + 1n);
+                const endRes2 = await voting2.sendEndVoting(user2.getSender());
+                expect(endRes2.transactions).toHaveTransaction({
+                    from: DAO.address,
+                    to: votingResults.address,
+                    op: Op.minter.send_vote_result,
+                    success: false,
+                    exitCode: Errors.results.voting_id_mismatch
+                });
+                const votingData2 = await voting2.getFullData();
+                expect(votingData2.executed).toEqual(true);
+                const resultsData = await votingResults.getData();
+                expect(resultsData.finished).toEqual(false);
+            });
+            it('first voting should finish successfully', async () => {
+                const endRes1 = await voting1.sendEndVoting(user1.getSender());
+                expect(endRes1.transactions).toHaveTransaction({
+                    from: DAO.address,
+                    to: votingResults.address,
+                    op: Op.minter.send_vote_result,
+                    success: true
+                });
+                const votingData1 = await voting1.getFullData();
+                expect(votingData1.executed).toEqual(true);
+                const resultsData = await votingResults.getData();
+                expect(resultsData.finished).toEqual(true);
+                expect(resultsData.votesFor).toEqual(initialUser3Balance);
+                expect(resultsData.votesAgainst).toEqual(0n);
+            });
+        });
+        // TODO: test with huge proposal. will it break something?
+    });
+    it('should not create type 1 voting if only polls', async () => {
+        // edit file ../../contracts/external_params.func, set line 8 to
+        //  const int external_param::only_polls = 1;
+        // recompile
+        // and edit back to
+        //  const int external_param::only_polls = 0;
+        let _minter_code: Cell;
+        const path = "/../../contracts/external_params.func";
+        let text = readFileSync(__dirname + path, 'utf8');
+        var edited = text.replace(/only_polls = 0/g, 'only_polls = -1');
+        writeFileSync(__dirname + path, edited, 'utf8');
+        _minter_code = await compile("JettonMinter");
+        // back to normal
+        writeFileSync(__dirname + path, text, 'utf8');
+        let _DAO = blockchain.openContract(
+             JettonMinter.createFromConfig(
+               {
+                 admin: user1.address,
+                 content: defaultContent,
+                 voting_code: voting_code,
+               }, _minter_code));
+
+        await _DAO.sendDeploy(user1.getSender(), toNano('1'));
+
+        expect(_DAO.address.equals(DAO.address)).toBe(false);
+        expect(user1.address.equals(await _DAO.getAdminAddress())).toBe(true);
+
+        const payload  = getRandomPayload();
+        const winMsg   = genMessage(user1.address, payload);
+        const createVotingRes = await _DAO.sendCreateSimpleMsgVoting(user1.getSender(),
+            expirationDate,
+            toNano('0.1'), // minimal_execution_amount
+            winMsg // payload
+        );
+        expect(createVotingRes.transactions).toHaveTransaction({
+            from: user1.address,
+            to: _DAO.address,
+            success: false,
+            exitCode: Errors.minter.forbidden_vote_id
         });
     });
 });
