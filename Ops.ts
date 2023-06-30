@@ -51,5 +51,12 @@ export abstract class Op {
 		jettons_burned : 0x319b0cdc
 	}
 
-
+    // Voting Results
+    static readonly results = {
+        execute_vote_result : 0x4f0f7510,
+        send_vote_result : 0x57fe3672,
+        init_voting_results : 0x66afdef2,
+        provide_voting_results : 0x7546a34d,
+        take_voting_results : 0xd1bb7471
+    }
 }

@@ -77,14 +77,13 @@ describe('JettonWallet', () => {// return;
 
         assertVoteCreation = async (via:Sender, jettonWallet:ActiveJettonWallet, voting:Address, votingType:bigint, expDate:bigint, prop:Cell, expErr:number) => {
             const minExecution   = toNano('0.5');
-            const res = await jettonWallet.sendCreateVotingThroughWallet(via, expDate, minExecution, prop, votingType);
+            const res = await jettonWallet.sendCreateSimpleMsgVotingThroughWallet(via, expDate, minExecution, prop, votingType);
 
-            const createVoting = {
+            const createSimpleMsgVoting = {
                 from: jettonWallet.address,
                 on:   jettonMinter.address,
-                body: JettonMinter.createVotingMessage(expDate,
+                body: JettonMinter.createSimpleMsgVotingMessage(expDate,
                                                        minExecution,
-                                                       votingType,
                                                        prop)
 
             };
@@ -97,11 +96,11 @@ describe('JettonWallet', () => {// return;
                 initCode: voting_code
             };
             if(expErr == 0) {
-                expect(res.transactions).toHaveTransaction(createVoting);
+                expect(res.transactions).toHaveTransaction(createSimpleMsgVoting);
                 expect(res.transactions).toHaveTransaction(deployVoting);
             }
             else {
-                expect(res.transactions).not.toHaveTransaction(createVoting);
+                expect(res.transactions).not.toHaveTransaction(createSimpleMsgVoting);
                 expect(res.transactions).not.toHaveTransaction(deployVoting);
                 expect(res.transactions).toHaveTransaction({
                     from: via.address,

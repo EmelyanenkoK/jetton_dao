@@ -2,15 +2,37 @@ import { Address, beginCell, Cell, Contract, contractAddress, ContractProvider, 
 import { Op } from "../Ops";
 
 
-export type VotingConfig = {master: Address, voting_id:bigint};
+export type VotingConfig = {
+    master: Address,
+    voting_id: bigint
+};
+
 export class Voting implements Contract {
     constructor(readonly address: Address, readonly init?: { code: Cell; data: Cell }) {}
 
-    static votingConfigToCell(conf:VotingConfig) {
+    static votingConfigToCell(conf: VotingConfig) {
         return beginCell().storeBit(false).storeAddress(conf.master).storeUint(conf.voting_id, 64).endCell();
     }
     static createFromAddress(address: Address) {
         return new Voting(address);
+    }
+
+    static createFromConfig(conf:VotingConfig, code:Cell, workchain = 0) {
+        const data = Voting.votingConfigToCell(conf);
+        const init = {code, data};
+        return new Voting(contractAddress(workchain, init), init);
+    }
+
+    static endVotingMessage(query_id:bigint = 0n) {
+        return beginCell().storeUint(Op.voting.end_voting, 32).storeUint(query_id, 64).endCell();
+    }
+
+    async sendEndVoting(provider: ContractProvider, via: Sender, value:bigint=toNano('0.5')) {
+        await provider.internal(via, {
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            body: Voting.endVotingMessage(),
+            value
+        });
     }
 
 /*
@@ -42,24 +64,6 @@ export class Voting implements Contract {
             minAmount, message, description,
             votedFor, votedAgainst,
         };
-    }
-
-    static createFromConfig(conf:VotingConfig, code:Cell, workchain = 0) {
-        const data = Voting.votingConfigToCell(conf);
-        const init = {code, data};
-        return new Voting(contractAddress(workchain, init), init);
-    }
-
-    static endVotingMessage(query_id:bigint = 0n) {
-        return beginCell().storeUint(Op.voting.end_voting, 32).storeUint(query_id, 64).endCell();
-    }
-
-    async sendEndVoting(provider: ContractProvider, via: Sender, value:bigint=toNano('0.5')) {
-        await provider.internal(via, {
-            sendMode: SendMode.PAY_GAS_SEPARATELY,
-            body: Voting.endVotingMessage(),
-            value
-        });
     }
 /*
 (init, dao_address, voting_id, expiration_date, voting_type,
@@ -94,10 +98,20 @@ export class Voting implements Contract {
             initiator,
         };
     }
-
-    static createProposalBody(minimal_execution_amount:bigint, forwardMsg:Cell, description: string = "Sample description") {
-
-        return beginCell().storeCoins(minimal_execution_amount).storeMaybeRef(forwardMsg).storeStringTail(description).endCell();
+    static createSendMsgProposalBody(minimal_execution_amount:bigint, forwardMsg:Cell, description: string = "Sample description") {
+        return beginCell()
+                .storeCoins(minimal_execution_amount)
+                .storeMaybeRef(forwardMsg)
+                .storeStringTail(description)
+               .endCell();
     }
 
+    static createPollProposal(voting_duration: bigint | number, body: Cell | string = "Sample description") {
+        if (typeof body === "string")
+          body = beginCell().storeStringTail(body).endCell();
+        return beginCell()
+                .storeUint(voting_duration, 48)
+                .storeRef(body)
+               .endCell();
+    }
 }

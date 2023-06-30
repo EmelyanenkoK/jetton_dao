@@ -80,7 +80,6 @@ voting_created#c39f0be6 query_id:uint64 voting_address:MsgAddressInt = InternalM
 init_voting#182d8ddd query_id:uint64 expiration_date:uint48 voting_type:uint64 wallet_code:^Cell vote_controller:^Cell proposal:^Proposal initiator:MsgAddressInt = InternalMsgBody;
 submit_votes#6edb1889 query_id:uint64 voter:MsgAddressInt expiration_date:uint48 weight:Coins vote:Bool need_confirmation:Bool = InternalMsgBody;
 end_voting#66173a45 query_id:uint64 = InternalMsgBody;
-
 //out
 //voting_initiated
 //request_confirm_voting
@@ -92,6 +91,13 @@ request_vote#2bd63704 query_id:uint64 voter:MsgAddressInt expiration_date:uint48
 //out
 //submit_vote
 
-
-
-
+// Voting Results
+// storage
+voting_results_uninited$0 voting_body:^Cell voting_duration:uint48 dao_address:MsgAddress = Storage;
+voting_results_inited$1 voting_body:^Cell voting_duration:uint48 dao_address:MsgAddress finished:Bool voting_id:uint64 votes_for:Coins votes_against:Coins = Storage;
+//in
+init_voting_results#66afdef2 query_id:uint64 voting_id:uint64 = InternalMsgBody;
+send_vote_result#57fe3672 query_id:uint64 voting_id:uint64 voted_for:Coins voted_against:Coins = InternalMsgBody;
+provide_voting_results#7546a34d query_id:uint64 = InternalMsgBody;
+//out
+take_voting_results#d1bb7471 query_id:uint64 voting_body:^Cell voting_duration:uint48 dao_address:MsgAddress finished:Bool voting_id:uint64 votes_for:Coins votes_against:Coins = InternalMsgBody;

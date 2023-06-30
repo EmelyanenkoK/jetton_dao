@@ -151,17 +151,24 @@ const int min_storage_fee = 30000000;
         save_data();
         return send_raw_message(msg.end_cell(), CARRY_REMAINING_BALANCE | IGNORE_ERRORS);
     }
-    if(op == op::end_voting) {
+    if (op == op::end_voting) {
         {-
           proposal$_ minimal_execution_amount:Coins
                      message_to_send:^Cell = Proposal;
         -}
-        slice proposal_data = proposal.begin_parse();
-        int minimal_execution_amount = proposal_data~load_coins();
-        cell message_to_send = proposal_data~load_maybe_ref();
         throw_unless(error::voting_not_finished, now() > expiration_date);
         throw_if(error::voting_already_executed, executed);
-        throw_unless(error::not_enough_money, msg_value >= minimal_execution_amount);
+        cell payload = new_dict();
+        if (voting_type == 0) {
+            slice proposal_data = proposal.begin_parse();
+            int minimal_execution_amount = proposal_data~load_coins();
+            payload = proposal_data~load_maybe_ref(); ;; message to send
+            throw_unless(error::not_enough_money, msg_value >= minimal_execution_amount);
+        }
+        if (voting_type == 1) {
+            throw_unless(error::not_enough_money, msg_value >= send_result_chain_cost);
+            payload = proposal;
+        }
         var msg = begin_cell()
                     .store_msg_flag(msg_flag::non_bounceable)
                     .store_slice(dao_address)
@@ -172,7 +179,7 @@ const int min_storage_fee = 30000000;
                     .store_uint(voting_id, 64).store_uint(expiration_date, 48)
                     .store_uint(voting_type, 64)
                     .store_coins(voted_for).store_coins(voted_against)
-                    .store_maybe_ref(message_to_send);
+                    .store_maybe_ref(payload);
         executed = true;
         save_data();
         return send_raw_message(msg.end_cell(), CARRY_REMAINING_GAS);
