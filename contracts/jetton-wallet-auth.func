@@ -1,4 +1,5 @@
 #include "params.func";
+#include "types.func";
 #include "jetton-utils.func";
 
 {-
@@ -7,7 +8,7 @@
 -}
 slice calc_address(cell state_init) inline_ref {
     return begin_cell().store_uint(4, 3) ;; 0x100 : $10 + anycast (Maybe = 0)
-            .store_int(workchain, 8)
+            .store_workchain(BASECHAIN)
             .store_uint(
                     cell_hash(state_init), 256)
             .end_cell()

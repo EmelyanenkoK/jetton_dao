@@ -1,4 +1,5 @@
 #include "stdlib.func";
+#include "types.func";
 #include "jetton-utils.func";
 #include "dao-utils.func";
 ;;#include "error-codes.func";
@@ -24,10 +25,10 @@ const int min_storage_fee = 30000000;
 -}
 () load_uninit_data() impure {
     slice cs = get_data().begin_parse();
-    init = cs~load_int(1);
+    init = cs~load_bool();
     throw_if(error::already_inited, init);
     dao_address = cs~load_msg_addr();
-    voting_id = cs~load_int(64);
+    voting_id = cs~load_voting_id();
 }
 {-
    init$1 jetton_master:MsgAddressInt voting_id:uint64
@@ -39,38 +40,38 @@ const int min_storage_fee = 30000000;
 -}
 () load_data() impure {
     slice cs = get_data().begin_parse();
-    init = cs~load_int(1);
+    init = cs~load_bool();
     throw_unless(error::not_inited, init);
     dao_address = cs~load_msg_addr();
-    voting_id = cs~load_int(64);
-    expiration_date = cs~load_int(48);
-    voting_type = cs~load_int(64);
+    voting_id = cs~load_voting_id();
+    expiration_date = cs~load_timestamp();
+    voting_type = cs~load_voting_type();
     proposal = cs~load_ref();
     voted_for = cs~load_coins();
     voted_against = cs~load_coins();
-    executed = cs~load_int(1);
+    executed = cs~load_bool();
     initiator = cs~load_msg_addr();
 }
 
 () save_data() impure {
     set_data(begin_cell()
-                  .store_int(init, 1)
+                  .store_bool(init)
                   .store_slice(dao_address)
-                  .store_uint(voting_id, 64)
-                  .store_uint(expiration_date, 48)
-                  .store_uint(voting_type, 64)
+                  .store_voting_id(voting_id)
+                  .store_timestamp(expiration_date)
+                  .store_voting_type(voting_type)
                   .store_ref(proposal)
                   .store_coins(voted_for)
                   .store_coins(voted_against)
-                  .store_int(executed, 1)
+                  .store_bool(executed)
                   .store_slice(initiator)
              .end_cell()
     );
 }
 
 () init_voting(int query_id, slice request) impure {
-    expiration_date = request~load_uint(48);
-    voting_type = request~load_uint(64);
+    expiration_date = request~load_timestamp();
+    voting_type = request~load_voting_type();
     proposal = request~load_ref();
     initiator = request~load_msg_addr();
     init = true;
@@ -81,16 +82,16 @@ const int min_storage_fee = 30000000;
     ;; TODO should depend on proposal size
     raw_reserve(min_storage_fee, 0);
     var msg = begin_cell()
-            .store_msg_flag(msg_flag::bounceable)
+            .store_msg_flag(msgflag::BOUNCEABLE)
             .store_slice(dao_address)
             .store_coins(0)
             .store_msgbody_prefix_slice()
             .store_op(op::voting_initiated)
             .store_query_id(query_id)
-            .store_uint(voting_id, 64)
-            .store_uint(expiration_date, 48)
+            .store_voting_id(voting_id)
+            .store_timestamp(expiration_date)
             .store_slice(initiator);
-    send_raw_message(msg.end_cell(), CARRY_REMAINING_BALANCE | IGNORE_ERRORS);
+    send_raw_message(msg.end_cell(), sendmode::CARRY_ALL_BALANCE | sendmode::IGNORE_ERRORS);
 }
 
 () main (int balance, int msg_value, cell in_msg_full, slice in_msg_body) {
@@ -116,11 +117,11 @@ const int min_storage_fee = 30000000;
         throw_unless(error::unauthorized_vote,
                 equal_slice_bits(sender_address, vote_keeper));
         throw_unless(error::voting_already_finished, now() < expiration_date);
-        int submitted_expiration_date = in_msg_body~load_uint(48);
+        int submitted_expiration_date = in_msg_body~load_timestamp();
         throw_unless(error::wrong_expiration_date, submitted_expiration_date >= expiration_date);
         int weight = in_msg_body~load_coins();
-        int vote = in_msg_body~load_int(1);
-        int need_confirmation = in_msg_body~load_int(1);
+        int vote = in_msg_body~load_bool();
+        int need_confirmation = in_msg_body~load_bool();
         in_msg_body.end_parse();
         if (vote) {
             voted_for += weight;
@@ -131,17 +132,17 @@ const int min_storage_fee = 30000000;
         builder msg = null();
         if(need_confirmation) {
             msg = begin_cell()
-                    .store_msg_flag(msg_flag::bounceable)
+                    .store_msg_flag(msgflag::BOUNCEABLE)
                     .store_slice(dao_address)
                     .store_coins(0)
                     .store_msgbody_prefix_slice()
                     .store_op(op::request_confirm_voting)
                     .store_query_id(query_id)
-                    .store_uint(voting_id, 64)
+                    .store_voting_id(voting_id)
                     .store_slice(voter);
         } else {
             msg = begin_cell()
-                .store_msg_flag(msg_flag::non_bounceable)
+                .store_msg_flag(msgflag::NON_BOUNCEABLE)
                 .store_slice(voter)
                 .store_coins(0)
                 .store_msgbody_prefix_slice()
@@ -149,7 +150,7 @@ const int min_storage_fee = 30000000;
                 .store_query_id(query_id);
         }
         save_data();
-        return send_raw_message(msg.end_cell(), CARRY_REMAINING_BALANCE | IGNORE_ERRORS);
+        return send_raw_message(msg.end_cell(), sendmode::CARRY_ALL_BALANCE | sendmode::IGNORE_ERRORS);
     }
     if (op == op::end_voting) {
         {-
@@ -170,19 +171,20 @@ const int min_storage_fee = 30000000;
             payload = proposal;
         }
         var msg = begin_cell()
-                    .store_msg_flag(msg_flag::non_bounceable)
+                    .store_msg_flag(msgflag::NON_BOUNCEABLE)
                     .store_slice(dao_address)
                     .store_coins(0)
                     .store_msgbody_prefix_slice()
                     .store_op(op::execute_vote_result)
                     .store_query_id(query_id)
-                    .store_uint(voting_id, 64).store_uint(expiration_date, 48)
-                    .store_uint(voting_type, 64)
+                    .store_voting_id(voting_id)
+                    .store_timestamp(expiration_date)
+                    .store_voting_type(voting_type)
                     .store_coins(voted_for).store_coins(voted_against)
                     .store_maybe_ref(payload);
         executed = true;
         save_data();
-        return send_raw_message(msg.end_cell(), CARRY_REMAINING_GAS);
+        return send_raw_message(msg.end_cell(), sendmode::CARRY_ALL_REMAINING_MESSAGE_VALUE);
     }
     throw(error::unknown_op);
 }

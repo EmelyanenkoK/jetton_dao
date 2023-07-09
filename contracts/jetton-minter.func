@@ -1,4 +1,5 @@
 #include "stdlib.func";
+#include "types.func";
 #include "jetton-utils.func";
 #include "dao-utils.func";
 #include "voting-results-utils.func";
@@ -27,7 +28,7 @@ const int voting_results_init_fee = 20000000;
             ds~load_coins(), ;; total_supply
             ds~load_msg_addr(), ;; admin_address
             ds~load_ref(), ;; content
-            ds~load_uint(64), ;; voting_id: votings has sequential ids like nft
+            ds~load_voting_id(), ;; voting_id: votings has sequential ids like nft
             ds~load_ref() ;; voting_code
     );
 }
@@ -39,7 +40,7 @@ const int voting_results_init_fee = 20000000;
             .store_coins(total_supply)
             .store_slice(admin_address)
             .store_ref(content)
-            .store_uint(voting_id, 64)
+            .store_voting_id(voting_id)
             .store_ref(voting_code)
             .end_cell()
     );
@@ -72,13 +73,13 @@ int is_proposal_accepted(int voted_for, int voted_against, int total_votes) inli
                         jetton_wallet_code());
     slice to_wallet_address = calc_address(state_init);
     var msg = begin_cell()
-            .store_msg_flag(msg_flag::bounceable)
+            .store_msg_flag(msgflag::BOUNCEABLE)
             .store_slice(to_wallet_address)
             .store_coins(amount)
             .store_msgbody_prefix_stateinit(state_init, master_msg);
-    int mode = PAY_FEES_SEPARATELY;
+    int mode = sendmode::PAY_FEES_SEPARATELY;
     if(amount == 0) {
-        mode = CARRY_REMAINING_GAS;
+        mode = sendmode::CARRY_ALL_REMAINING_MESSAGE_VALUE;
     }
     send_raw_message(msg.end_cell(), mode); ;; pay transfer fees separately, revert on errors
 }
@@ -146,7 +147,7 @@ int is_proposal_accepted(int voted_for, int voted_against, int total_votes) inli
                 voting_id, voting_code);
         slice response_address = in_msg_body~load_msg_addr();
         cell custom_payload = in_msg_body~load_dict();
-        var msg = begin_cell().store_msg_flag(msg_flag::non_bounceable);
+        var msg = begin_cell().store_msg_flag(msgflag::NON_BOUNCEABLE);
         if(admin_address.preload_uint(2) != 0) {
            ;; Note, admin should manage excesses sending himself
            msg = msg.store_slice(admin_address)
@@ -170,7 +171,7 @@ int is_proposal_accepted(int voted_for, int voted_against, int total_votes) inli
         } else {
           return ();
         }
-        send_raw_message(msg.end_cell(), IGNORE_ERRORS | CARRY_REMAINING_GAS);
+        send_raw_message(msg.end_cell(), sendmode::IGNORE_ERRORS | sendmode::CARRY_ALL_REMAINING_MESSAGE_VALUE);
         return ();
     }
 
@@ -178,14 +179,14 @@ int is_proposal_accepted(int voted_for, int voted_against, int total_votes) inli
         throw_unless(error::discovery_fee_not_matched, msg_value > fwd_fee + provide_address_gas_consumption);
 
         slice owner_address = in_msg_body~load_msg_addr();
-        int include_address? = in_msg_body~load_int(1);
+        int include_address? = in_msg_body~load_bool();
 
         cell included_address = include_address?
                 ? begin_cell().store_slice(owner_address).end_cell()
                 : null();
 
         var msg = begin_cell()
-                .store_msg_flag(msg_flag::bounceable)
+                .store_msg_flag(msgflag::BOUNCEABLE)
                 .store_slice(sender_address)
                 .store_coins(0)
                 .store_msgbody_prefix_slice()
@@ -197,7 +198,7 @@ int is_proposal_accepted(int voted_for, int voted_against, int total_votes) inli
         } else {
             msg = msg.store_uint(0, 2); ;; addr_none
         }
-        send_raw_message(msg.store_maybe_ref(included_address).end_cell(), CARRY_REMAINING_GAS);
+        send_raw_message(msg.store_maybe_ref(included_address).end_cell(), sendmode::CARRY_ALL_REMAINING_MESSAGE_VALUE);
         return ();
     }
 
@@ -236,8 +237,8 @@ int is_proposal_accepted(int voted_for, int voted_against, int total_votes) inli
     }
 
     if (op == op::create_voting) { ;; anybody can create a voting proposal
-        (int expiration_date, cell proposal) = (in_msg_body~load_uint(48), in_msg_body~load_ref());
-        int voting_type = in_msg_body~load_uint(64);
+        (int expiration_date, cell proposal) = (in_msg_body~load_timestamp(), in_msg_body~load_ref());
+        int voting_type = in_msg_body~load_voting_type();
         if(external_param::only_polls) {
             ;; allow only polls: voting_type == 1
             throw_unless( error::forbidden_voting_type, voting_type == 1);
@@ -251,21 +252,21 @@ int is_proposal_accepted(int voted_for, int voted_against, int total_votes) inli
             var msg_body = begin_cell()
                     .store_op(op::init_voting)
                     .store_query_id(query_id)
-                    .store_uint(expiration_date, 48)
-                    .store_uint(voting_type, 64)
+                    .store_timestamp(expiration_date)
+                    .store_voting_type(voting_type)
                     .store_ref(proposal)
                     .store_slice(sender_address)
                     .end_cell();
             var msg = begin_cell()
-                    .store_msg_flag(msg_flag::bounceable)
+                    .store_msg_flag(msgflag::BOUNCEABLE)
                     .store_slice(voting)
                     .store_coins(0)
                     .store_msgbody_prefix_stateinit(state_init, msg_body);
-            send_raw_message(msg.end_cell(), CARRY_REMAINING_GAS);
+            send_raw_message(msg.end_cell(), sendmode::CARRY_ALL_REMAINING_MESSAGE_VALUE);
         } elseif (voting_type == 1) { ;;no execution, voting results
             slice cs  = proposal.begin_parse();
             ;; expiration date in first 48 bits is useless?
-            int voting_duration = cs~load_uint(48);
+            int voting_duration = cs~load_timestamp();
             throw_unless(error::voting_already_finished, voting_duration > 0);
             throw_unless(error::expiration_date_too_high, max_voting_duration > voting_duration);
             expiration_date = now() + voting_duration;
@@ -277,29 +278,29 @@ int is_proposal_accepted(int voted_for, int voted_against, int total_votes) inli
             var vr_msg_body = begin_cell()
                     .store_op(op::init_voting_results)
                     .store_query_id(query_id)
-                    .store_uint(voting_id, 64)
+                    .store_voting_id(voting_id)
                     .end_cell();
             var vr_msg = begin_cell()
-                    .store_msg_flag(msg_flag::bounceable)
+                    .store_msg_flag(msgflag::BOUNCEABLE)
                     .store_slice(voting_results)
                     .store_coins(voting_results_init_fee)
                     .store_msgbody_prefix_stateinit(vr_state_init, vr_msg_body);
-            send_raw_message(vr_msg.end_cell(), REVERT_ON_ERRORS);
+            send_raw_message(vr_msg.end_cell(), sendmode::REVERT_ON_ERRORS);
             var msg_body = begin_cell()
                     .store_op(op::init_voting)
                     .store_query_id(query_id)
-                    .store_uint(expiration_date, 48)
-                    .store_uint(voting_type, 64)
+                    .store_timestamp(expiration_date)
+                    .store_voting_type(voting_type)
                     .store_ref(proposal)
                     .store_slice(sender_address)
                     .end_cell();
             var msg = begin_cell()
-                    .store_msg_flag(msg_flag::bounceable)
+                    .store_msg_flag(msgflag::BOUNCEABLE)
                     .store_slice(voting)
                     .store_coins(0)
                     .store_msgbody_prefix_stateinit(state_init, msg_body);
             raw_reserve(balance - msg_value, 0);
-            send_raw_message(msg.end_cell(), CARRY_REMAINING_BALANCE);
+            send_raw_message(msg.end_cell(), sendmode::CARRY_ALL_BALANCE);
         }
         voting_id += 1;
         save_data(total_supply, admin_address,
@@ -308,23 +309,23 @@ int is_proposal_accepted(int voted_for, int voted_against, int total_votes) inli
         return ();
     }
     if(op == op::voting_initiated) {
-        (int voting_id, int expiration_date) = (in_msg_body~load_uint(64), in_msg_body~load_uint(48));
+        (int voting_id, int expiration_date) = (in_msg_body~load_voting_id(), in_msg_body~load_timestamp());
         slice voting_address = calculate_dao_voting_address(my_address(), voting_id, voting_code);
         throw_unless(error::unauthorized_vote_execution, equal_slice_bits(sender_address, voting_address));
         slice initiator = in_msg_body~load_msg_addr();
         var msg = begin_cell()
-                .store_msg_flag(msg_flag::bounceable)
+                .store_msg_flag(msgflag::BOUNCEABLE)
                 .store_slice(initiator)
                 .store_coins(0)
                 .store_msgbody_prefix_slice()
                 .store_op(op::voting_created)
                 .store_query_id(query_id)
                 .store_slice(voting_address);
-        return send_raw_message(msg.end_cell(), CARRY_REMAINING_GAS | IGNORE_ERRORS);
+        return send_raw_message(msg.end_cell(), sendmode::CARRY_ALL_REMAINING_MESSAGE_VALUE | sendmode::IGNORE_ERRORS);
     }
     if(op == op::execute_vote_result) {
-        (int voting_id, int expiration_date) = (in_msg_body~load_uint(64), in_msg_body~load_uint(48));
-        int voting_type = in_msg_body~load_uint(64);
+        (int voting_id, int expiration_date) = (in_msg_body~load_voting_id(), in_msg_body~load_timestamp());
+        int voting_type = in_msg_body~load_voting_type();
         slice voting_address = calculate_dao_voting_address(my_address(), voting_id, voting_code);
         throw_unless(error::unauthorized_vote_execution, equal_slice_bits(sender_address, voting_address));
         throw_unless(error::voting_not_finished, now() >= expiration_date);
@@ -333,27 +334,27 @@ int is_proposal_accepted(int voted_for, int voted_against, int total_votes) inli
             if(is_proposal_accepted(voted_for, voted_against, total_supply)) {
                 ifnot(payload.null?()) {
                     if(payload.pass_the_filter?()) {
-                        send_raw_message(payload, CARRY_REMAINING_GAS);
+                        send_raw_message(payload, sendmode::CARRY_ALL_REMAINING_MESSAGE_VALUE);
                     }
                 }
             }
         } elseif (voting_type == 1) { ;; "send results"
             slice cs  = payload.begin_parse();
-            int voting_duration = cs~load_uint(48);
+            int voting_duration = cs~load_timestamp();
             cell voting_body = cs~load_ref();
             cell vr_state_init = calculate_voting_results_state_init(voting_body, voting_duration, my_address());
             slice voting_results = calc_address(vr_state_init);
             var msg = begin_cell()
-                    .store_msg_flag(msg_flag::non_bounceable)
+                    .store_msg_flag(msgflag::NON_BOUNCEABLE)
                     .store_slice(voting_results)
                     .store_coins(0)
                     .store_msgbody_prefix_slice()
                     .store_op(op::send_vote_result)
                     .store_query_id(query_id)
-                    .store_uint(voting_id, 64)
+                    .store_voting_id(voting_id)
                     .store_coins(voted_for)
                     .store_coins(voted_against);
-            return send_raw_message(msg.end_cell(), CARRY_REMAINING_GAS);
+            return send_raw_message(msg.end_cell(), sendmode::CARRY_ALL_REMAINING_MESSAGE_VALUE);
         }
         return ();
     }
@@ -361,7 +362,7 @@ int is_proposal_accepted(int voted_for, int voted_against, int total_votes) inli
     if(op == op::request_confirm_voting) {
         ;;request_confirm_voting query_id:uint64
         ;;                       voting_id:uint64 voter:MsgAddressInt  = InternalMsgBody; // Voting -> DAO
-        (int voting_id) = (in_msg_body~load_uint(64));
+        (int voting_id) = (in_msg_body~load_voting_id());
         slice voting_address = calculate_dao_voting_address(my_address(), voting_id, voting_code);
         throw_unless(error::unauthorized_vote_execution, equal_slice_bits(sender_address, voting_address));
         slice voter = in_msg_body~load_msg_addr();
@@ -369,13 +370,13 @@ int is_proposal_accepted(int voted_for, int voted_against, int total_votes) inli
         slice voter_wallet = calc_user_wallet(voter, my_address(), jetton_wallet_code());
         ;;confirm_voting query_id:uint64 = InternalMsgBody; // DAO -> voter_wallet
         var msg = begin_cell()
-                .store_msg_flag(msg_flag::non_bounceable)
+                .store_msg_flag(msgflag::NON_BOUNCEABLE)
                 .store_slice(voter_wallet)
                 .store_coins(0)
                 .store_msgbody_prefix_slice()
                 .store_op(op::confirm_voting)
                 .store_query_id(query_id);
-        return send_raw_message(msg.end_cell(), CARRY_REMAINING_GAS | IGNORE_ERRORS);
+        return send_raw_message(msg.end_cell(), sendmode::CARRY_ALL_REMAINING_MESSAGE_VALUE | sendmode::IGNORE_ERRORS);
     }
     throw(error::unknown_op);
 }

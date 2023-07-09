@@ -4,9 +4,9 @@
 -}
 cell pack_uninit_voting_results_data (cell voting_body, int voting_duration, slice dao_address) inline {
     return  begin_cell()
-            .store_int(false, 1) ;; init?
+            .store_bool(false) ;; init?
             .store_ref(voting_body)
-            .store_uint(voting_duration, 48)
+            .store_timestamp(voting_duration)
             .store_slice(dao_address)
             .end_cell();
 }

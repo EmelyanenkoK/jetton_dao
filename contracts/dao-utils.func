@@ -1,13 +1,14 @@
 #include "jetton-wallet-auth.func";
+#include "types.func";
 
 {-
    uninit$0 jetton_master:MsgAddressInt voting_id:uint64 = Storage;
 -}
 cell pack_uninit_dao_voting_data (slice dao_master, int voting_id) inline {
     return  begin_cell()
-            .store_int(false, 1)
+            .store_bool(false)
             .store_slice(dao_master)
-            .store_uint(voting_id, 64)
+            .store_voting_id(voting_id)
             .end_cell();
 }
 

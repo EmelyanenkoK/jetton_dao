@@ -1,10 +1,10 @@
 #include "error-codes.func";
-
-const int workchain = 0;
+#include "types.func";
+#include "params.func";
 
 int is_resolvable?(slice addr) inline {
     (int wc, _) = parse_std_addr(addr);
-    return wc == workchain;
+    return wc == BASECHAIN;
 }
 
 () force_chain(slice addr) impure {
