@@ -178,7 +178,7 @@ int is_proposal_accepted(int voted_for, int voted_against, int total_votes) inli
         throw_unless(error::discovery_fee_not_matched, msg_value > fwd_fee + provide_address_gas_consumption);
 
         slice owner_address = in_msg_body~load_msg_addr();
-        int include_address? = in_msg_body~load_uint(1);
+        int include_address? = in_msg_body~load_int(1);
 
         cell included_address = include_address?
                 ? begin_cell().store_slice(owner_address).end_cell()
