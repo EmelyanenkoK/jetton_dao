@@ -266,7 +266,7 @@ const int burn_notification = 750000000;
   slice sender_address = cs~load_msg_addr();
   cs~load_msg_addr(); ;; skip dst
   cs~load_coins(); ;; skip value
-  cs~skip_bits(1); ;; skip extracurrency collection
+  cs~load_dict(); ;; skip extracurrency collection
   cs~load_coins(); ;; skip ihr_fee
   int fwd_fee = muldiv(cs~load_coins(), 3, 2); ;; we use message fwd_fee for estimation of forward_payload costs
 
