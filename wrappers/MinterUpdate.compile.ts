@@ -10,6 +10,7 @@ export const compile: CompilerConfig = {
     preCompileHook: async () => {
         await compileFunc('JettonWallet');
     },
-    targets: [ 'contracts/auto/jetton-wallet-code.func',
+    targets: [ 'contracts/auto/voting-results-code.func',
+               'contracts/auto/jetton-wallet-code.func',
                'tests/dao/minter-upd.func'],
 }

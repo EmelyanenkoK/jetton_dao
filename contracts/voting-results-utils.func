@@ -1,0 +1,30 @@
+#include "dao-utils.func";
+{-
+   voting_results init?:Bool voting_body:^Cell voting_duration:uint48 dao_address:MsgAddress = State;
+-}
+cell pack_uninit_voting_results_data (cell voting_body, int voting_duration, slice dao_address) inline {
+    return  begin_cell()
+            .store_bool(false) ;; init?
+            .store_ref(voting_body)
+            .store_timestamp(voting_duration)
+            .store_slice(dao_address)
+            .end_cell();
+}
+
+{-
+    _ split_depth:(Maybe (## 5)) special:(Maybe TickTock)
+      code:(Maybe ^Cell) data:(Maybe ^Cell)
+      library:(HashmapE 256 SimpleLib) = StateInit;
+-}
+cell calculate_voting_results_state_init (cell voting_body, int voting_duration, slice dao_address) inline {
+    return begin_cell()
+            .store_uint(0,1 + 1) ;; split_depth (Maybe = 0) and special (Maybe = 0)
+            .store_maybe_ref(voting_results_code())
+            .store_maybe_ref(pack_uninit_voting_results_data(voting_body, voting_duration, dao_address))
+            .store_uint(0,1) ;; libraries - empty cell
+            .end_cell();
+}
+
+(slice) calculate_voting_results_address (cell voting_body, int voting_duration, slice dao_address) inline {
+    return calc_address(calculate_voting_results_state_init(voting_body, voting_duration, dao_address));
+}

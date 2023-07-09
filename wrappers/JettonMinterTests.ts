@@ -97,32 +97,10 @@ export class JettonMinterTests extends JettonMinter {
         });
     }
 
-    static createVoteResult(voting_id: bigint | number,
-                            expiration_date: bigint | number,
-                            votedFor: bigint,
-                            votedAgainst: bigint,
-                            query_id: bigint | number = 0) {
-        return beginCell().storeUint(Op.minter.send_vote_result, 32)
+    static createVotingCreated(voting_address: Address, query_id: bigint = 0n) {
+        return beginCell().storeUint(Op.minter.voting_created, 32)
                           .storeUint(query_id, 64)
-                          .storeUint(voting_id, 64)
-                          .storeUint(expiration_date, 48)
-                          .storeCoins(votedFor)
-                          .storeCoins(votedAgainst)
+                          .storeAddress(voting_address)
                .endCell();
-    }
-
-    async sendVoteResult(provider: ContractProvider,
-                         via: Sender,
-                         voting_id: bigint | number,
-                         expiration_date: bigint | number,
-                         votedFor: bigint,
-                         votedAgainst: bigint,
-                         value: bigint = toNano('0.1'),
-                         query_id: bigint | number = 0) {
-        await provider.internal(via, {
-            value,
-            sendMode: SendMode.PAY_GAS_SEPARATELY,
-            body: JettonMinterTests.createVoteResult(voting_id, expiration_date, votedFor, votedAgainst)
-        });
     }
 }

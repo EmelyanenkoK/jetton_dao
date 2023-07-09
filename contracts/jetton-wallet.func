@@ -1,4 +1,5 @@
 #include "stdlib.func";
+#include "types.func";
 #include "jetton-utils.func";
 #include "dao-utils.func";
 #include "error-codes.func";
@@ -11,10 +12,11 @@ const int min_tons_for_storage = 10000000; ;;ONE_TON / 100;
 ;; and also constant fees on inter-wallet interaction, in particular fwd fee on state_init transfer
 ;; that means that you need to reconsider this fee when:
 ;; a) jetton logic become more costly
-;; b) jetton-wallet code become larger or smalle
+;; b) jetton-wallet code become larger or smaller
 ;; c) global fee changes / different workchain
-const int gas_consumption = 19000000;
-const int burn_notification = 0; ;;TODO
+;; if jetton_wallet_code is not stored in library cell use 19000000
+const int gas_consumption = external_param::wallet_gas_consumption;
+const int burn_notification = 750000000;
 
 {-
   Storage
@@ -104,7 +106,7 @@ const int burn_notification = 0; ;;TODO
           .store_slice(either_forward_payload)
           .end_cell();
   var msg = begin_cell()
-    .store_msg_flag(msg_flag::bounceable)
+    .store_msg_flag(msgflag::BOUNCEABLE)
     .store_slice(to_wallet_address)
     .store_coins(0)
     .store_msgbody_prefix_stateinit(state_init, msg_body);
@@ -121,7 +123,7 @@ const int burn_notification = 0; ;;TODO
                      ;; by using this instead of fwd_fee
                      ;; msg_fwd_fee(to_wallet, msg_body, state_init, 15)
 
-  send_raw_message(msg.end_cell(), CARRY_REMAINING_GAS); ;; revert on errors
+  send_raw_message(msg.end_cell(), sendmode::CARRY_ALL_REMAINING_MESSAGE_VALUE); ;; revert on errors
   save_data(balance, owner_address, jetton_master_address, jetton_wallet_code, locked, lock_expiration);
 }
 
@@ -140,6 +142,15 @@ const int burn_notification = 0; ;;TODO
   (int balance, slice owner_address,
    slice jetton_master_address, cell jetton_wallet_code,
    int locked, int lock_expiration) = load_data();
+  if(external_param::using_libs) {
+    ;; libs related code
+    ifnot(balance) {
+      ifnot (jetton_wallet_code.cell_depth()) {
+        ;;code is library
+        set_code(begin_cell().store_slice(jetton_wallet_code.begin_parse()).end_cell());
+      }
+    }
+  }
   int query_id = in_msg_body~load_query_id();
   int jetton_amount = in_msg_body~load_coins();
   balance += jetton_amount;
@@ -168,23 +179,23 @@ const int burn_notification = 0; ;;TODO
         .end_cell();
 
     var msg = begin_cell()
-      .store_msg_flag(msg_flag::non_bounceable) ;; we should not bounce here cause receiver can have uninitialized contract
+      .store_msg_flag(msgflag::NON_BOUNCEABLE) ;; we should not bounce here cause receiver can have uninitialized contract
       .store_slice(owner_address)
       .store_coins(forward_ton_amount)
       .store_msgbody_prefix_ref(msg_body);
 
-    send_raw_message(msg.end_cell(), PAY_FEES_SEPARATELY);
+    send_raw_message(msg.end_cell(), sendmode::PAY_FEES_SEPARATELY);
   }
   raw_reserve(max(ton_balance_before_msg, min_tons_for_storage), 2);
   if ((response_address.preload_uint(2) != 0) & (msg_value > 0)) {
     var msg = begin_cell()
-            .store_msg_flag(msg_flag::non_bounceable)
+            .store_msg_flag(msgflag::NON_BOUNCEABLE)
             .store_slice(response_address)
             .store_coins(0)
             .store_msgbody_prefix_slice()
             .store_op(op::excesses)
             .store_query_id(query_id);
-    send_raw_message(msg.end_cell(), CARRY_REMAINING_BALANCE | IGNORE_ERRORS);
+    send_raw_message(msg.end_cell(), sendmode::CARRY_ALL_BALANCE | sendmode::IGNORE_ERRORS);
   }
 
   save_data(balance, owner_address, jetton_master_address, jetton_wallet_code, locked, lock_expiration);
@@ -219,18 +230,18 @@ const int burn_notification = 0; ;;TODO
       .end_cell();
 
   var msg = begin_cell()
-    .store_msg_flag(msg_flag::bounceable)
+    .store_msg_flag(msgflag::BOUNCEABLE)
     .store_slice(jetton_master_address)
     .store_coins(0) ;; msg value
     .store_msgbody_prefix_ref(msg_body);
 
-  send_raw_message(msg.end_cell(), CARRY_REMAINING_GAS);
+  send_raw_message(msg.end_cell(), sendmode::CARRY_ALL_REMAINING_MESSAGE_VALUE);
 
   save_data(balance, owner_address, jetton_master_address, jetton_wallet_code, locked, lock_expiration);
 }
 
 () on_bounce (slice in_msg_body) impure inline_ref {
-  in_msg_body~skip_bounce_flag();
+  in_msg_body~skip_bounce();
   (int balance, slice owner_address,
    slice jetton_master_address, cell jetton_wallet_code,
    int locked, int lock_expiration) = load_data();
@@ -256,7 +267,7 @@ const int burn_notification = 0; ;;TODO
   slice sender_address = cs~load_msg_addr();
   cs~load_msg_addr(); ;; skip dst
   cs~load_coins(); ;; skip value
-  cs~skip_bits(1); ;; skip extracurrency collection
+  cs~load_dict(); ;; skip extracurrency collection
   cs~load_coins(); ;; skip ihr_fee
   int fwd_fee = muldiv(cs~load_coins(), 3, 2); ;; we use message fwd_fee for estimation of forward_payload costs
 
@@ -285,14 +296,14 @@ const int burn_notification = 0; ;;TODO
     throw_unless(error::unauthorized_transfer, equal_slice_bits(owner_address, sender_address));
     raw_reserve(min_tons_for_storage, 0);
     var msg = begin_cell()
-            .store_msg_flag(msg_flag::non_bounceable)
+            .store_msg_flag(msgflag::NON_BOUNCEABLE)
             .store_slice(owner_address)
             .store_coins(0)
             .store_msgbody_prefix_slice()
             .store_op(op::excesses)
             .store_query_id(in_msg_body~load_query_id());
     in_msg_body.end_parse();
-    return send_raw_message(msg.end_cell(), CARRY_REMAINING_BALANCE | IGNORE_ERRORS);
+    return send_raw_message(msg.end_cell(), sendmode::CARRY_ALL_BALANCE | sendmode::IGNORE_ERRORS);
   }
 
   if (op == op::withdraw_jettons) {
@@ -303,7 +314,7 @@ const int burn_notification = 0; ;;TODO
     cell custom_payload = in_msg_body~load_maybe_ref();
     in_msg_body.end_parse();
     var msg = begin_cell()
-            .store_msg_flag(msg_flag::bounceable)
+            .store_msg_flag(msgflag::BOUNCEABLE)
             .store_slice(child_wallet)
             .store_coins(0)
             .store_msgbody_prefix_ref(
@@ -315,10 +326,10 @@ const int burn_notification = 0; ;;TODO
               .store_slice(owner_address)
               .store_maybe_ref(custom_payload)
               .store_coins(0)
-              .store_int(false, 1)
+              .store_bool(false)
               .end_cell()
             );
-    return send_raw_message(msg.end_cell(), CARRY_REMAINING_GAS);
+    return send_raw_message(msg.end_cell(), sendmode::CARRY_ALL_REMAINING_MESSAGE_VALUE);
   }
 
   if(op == op::vote) {
@@ -327,11 +338,11 @@ const int burn_notification = 0; ;;TODO
     throw_unless(error::unauthorized_vote_submition, equal_slice_bits(owner_address, sender_address));
     int query_id = in_msg_body~load_query_id();
     slice voting = in_msg_body~load_msg_addr();
-    int expiration_date = in_msg_body~load_uint(48);
+    int expiration_date = in_msg_body~load_timestamp();
     throw_unless(error::expiration_date_too_high, now() + max_voting_duration > expiration_date);
     throw_unless(error::voting_already_finished, now() < expiration_date);
-    int vote = in_msg_body~load_int(1);
-    int need_confirmation = in_msg_body~load_int(1);
+    int vote = in_msg_body~load_bool();
+    int need_confirmation = in_msg_body~load_bool();
     in_msg_body.end_parse();
     cell vote_keeper_initstate = calculate_vote_keeper_state_init (my_address(), voting, vote_keeper_code());
     slice vote_keeper = calc_address(vote_keeper_initstate);
@@ -341,18 +352,18 @@ const int burn_notification = 0; ;;TODO
     ;; request_vote query_id:uint64 voter:MsgAddressInt expiration_date:uint48
     ;;                weight:Coins vote:Bool need_confirmation:Bool = InternalMsgBody;
     var msg = begin_cell()
-            .store_msg_flag(msg_flag::bounceable)
+            .store_msg_flag(msgflag::BOUNCEABLE)
             .store_slice(vote_keeper)
             .store_coins(0)
             .store_msgbody_prefix_stateinit_inline_body(vote_keeper_initstate)
             .store_op(op::request_vote)
             .store_query_id(query_id)
             .store_slice(owner_address)
-            .store_uint(expiration_date, 48)
+            .store_timestamp(expiration_date)
             .store_coins(locked)
-            .store_int(vote, 1)
-            .store_int(need_confirmation, 1);
-    send_raw_message(msg.end_cell(), CARRY_REMAINING_GAS);
+            .store_bool(vote)
+            .store_bool(need_confirmation);
+    send_raw_message(msg.end_cell(), sendmode::CARRY_ALL_REMAINING_MESSAGE_VALUE);
     save_data(balance, owner_address, jetton_master_address, jetton_wallet_code, locked, lock_expiration);
     return ();
   }
@@ -360,21 +371,21 @@ const int burn_notification = 0; ;;TODO
     throw_unless(error::unauthorized_vote_submition, equal_slice_bits(owner_address, sender_address));
     ;; create_voting_with_wallet query_id:uint64 expiration_date:uint48 proposal:^Proposal = InternalMsgBody;
     int query_id = in_msg_body~load_query_id();
-    (int voting_type, int expiration_date, cell proposal) = (in_msg_body~load_uint(64), in_msg_body~load_uint(48), in_msg_body~load_ref());
+    (int voting_type, int expiration_date, cell proposal) = (in_msg_body~load_voting_type(), in_msg_body~load_timestamp(), in_msg_body~load_ref());
     throw_unless(error::expiration_date_too_high, now() + max_voting_duration > expiration_date);
     throw_unless(error::voting_already_finished, now() < expiration_date);
     in_msg_body.end_parse();
     var msg = begin_cell()
-            .store_msg_flag(msg_flag::bounceable)
+            .store_msg_flag(msgflag::BOUNCEABLE)
             .store_slice(jetton_master_address)
             .store_coins(0)
             .store_msgbody_prefix_slice()
             .store_op(op::create_voting)
             .store_query_id(query_id)
-            .store_uint(voting_type, 64)
-            .store_uint(expiration_date, 48)
-            .store_ref(proposal);
-    send_raw_message(msg.end_cell(), CARRY_REMAINING_GAS);
+            .store_timestamp(expiration_date)
+            .store_ref(proposal)
+            .store_voting_type(0); ;; voting_type
+    send_raw_message(msg.end_cell(), sendmode::CARRY_ALL_REMAINING_MESSAGE_VALUE);
     return ();
   }
   if(op == op::confirm_voting) {
@@ -384,13 +395,13 @@ const int burn_notification = 0; ;;TODO
     in_msg_body.end_parse();
     ;; vote_confirmation query_id:uint64 = InternalMsgBody;
     var msg = begin_cell()
-            .store_msg_flag(msg_flag::non_bounceable)
+            .store_msg_flag(msgflag::NON_BOUNCEABLE)
             .store_slice(owner_address)
             .store_coins(0)
             .store_msgbody_prefix_slice()
             .store_op(op::vote_confirmation)
             .store_query_id(query_id);
-    send_raw_message(msg.end_cell(), CARRY_REMAINING_GAS);
+    send_raw_message(msg.end_cell(), sendmode::CARRY_ALL_REMAINING_MESSAGE_VALUE);
     return ();
   }
   if(op == op::voting_created) {
@@ -401,14 +412,14 @@ const int burn_notification = 0; ;;TODO
     in_msg_body.end_parse();
     ;; voting_confirmation query_id:uint64 voting_address:MsgAddressInt = InternalMsgBody;
     var msg = begin_cell()
-            .store_msg_flag(msg_flag::non_bounceable)
+            .store_msg_flag(msgflag::NON_BOUNCEABLE)
             .store_slice(owner_address)
             .store_coins(0)
             .store_msgbody_prefix_slice()
             .store_op(op::voting_confirmation)
             .store_query_id(query_id)
             .store_slice(voting_address);
-    send_raw_message(msg.end_cell(), CARRY_REMAINING_GAS);
+    send_raw_message(msg.end_cell(), sendmode::CARRY_ALL_REMAINING_MESSAGE_VALUE);
     return ();
   }
   throw(error::unknown_action);

@@ -5,17 +5,10 @@ import { compile as compileFunc } from '@ton-community/blueprint';
 
 export const compile: CompilerConfig = {
     lang: 'func',
-    preCompileHook: async () => {
-        await compileFunc('VoteKeeper');
-    },
-
-    targets: ['contracts/auto/vote-keeper-code.func',
-              'contracts/external_params.func',
-              'contracts/jetton-wallet.func'],
-
+    targets: ['contracts/voting-results.func'],
     postCompileHook: async (code) => {
         const auto = path.join(__dirname, '..', 'contracts', 'auto');
         await mkdir(auto, { recursive: true });
-        await writeFile(path.join(auto, 'jetton-wallet-code.func'), `cell jetton_wallet_code() asm "<b 2 8 u, 0x${code.hash().toString('hex')} 256 u, b>spec PUSHREF";`);
+        await writeFile(path.join(auto, 'voting-results-code.func'), `cell voting_results_code() asm "B{${code.toBoc().toString('hex')}} B>boc PUSHREF";`);
     }
 };

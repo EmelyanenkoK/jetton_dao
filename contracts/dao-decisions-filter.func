@@ -1,0 +1,71 @@
+;; This file should be linked separately, thus developer to depend on this
+;; repo could implement their own filters
+#include "stdlib.func";
+#include "op-codes.func";
+
+int pass_the_filter?(cell msg) {
+    slice cs = msg.begin_parse();
+    int flags = cs~load_uint(4);
+    slice sender_address = cs~load_msg_addr();
+    slice destination = cs~load_msg_addr();
+    int value = cs~load_coins();
+    cell extracurrency_collection = cs~load_maybe_ref();
+    int ihr_fee = cs~load_coins();
+    int fwd_fee = cs~load_coins();
+    int created_lt = cs~load_uint(64);
+    int created_at = cs~load_uint(32);
+    int init? = cs~load_int(1);
+    if(init?) {
+        int either? = cs~load_int(1);
+        if(either?) {
+            cell init_state = cs~load_ref();
+        } else {
+            ;; only allow init_state in ref
+            if(cs~load_int(1)) { ;;split_depth: Maybe
+              cs~skip_bits(5);
+            }
+            if(cs~load_int(1)) { ;;special: Maybe
+              cs~skip_bits(2);
+            }
+            cell code = cs~load_maybe_ref();
+            cell data = cs~load_maybe_ref();
+            cell library = cs~load_maybe_ref();
+        }
+    }
+    int either? = cs~load_int(1);
+    slice body = cs;
+    if (either?) {
+        body = cs.preload_ref().begin_parse();
+    }
+
+    ;; Finally we got body
+    if(body.slice_bits() < 32) {
+        return true;
+    }
+    int op = body~load_uint(32);
+
+    ;; Forbid any message which can be sent during normal work
+    if(op == op::internal_transfer) {
+        return false;
+    } elseif (op == op::jettons_burned) {
+        return false;
+    } elseif (op == op::excesses) {
+        return false;
+    } elseif (op == op::take_wallet_address) {
+        return false;
+    } elseif (op == op::init_voting) {
+        return false;
+    } elseif (op == op::voting_created) {
+        return false;
+    } elseif (op == op::send_vote_result) {
+        return false;
+    } elseif (op == op::confirm_voting) {
+        return false;
+    } elseif (op == op::send_vote_result) {
+        return false;
+    } elseif (op == op::init_voting_results) {
+        return false;
+    }
+
+    return true;
+}

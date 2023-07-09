@@ -8,10 +8,10 @@ const int error::not_enough_jettons = 706;
 const int error::unauthorized_incoming_transfer = 707;
 const int error::malformed_forward_payload = 708;
 const int error::not_enough_tons = 709;
-const int error::burn_fee_not_matched = 707;
+const int error::burn_fee_not_matched = 711;
 const int error::unknown_action = 0xFFFF;
 const int error::unknown_action_bounced = 0xFFF0;
-const int error::unauthorized_vote_submition = 710; ;;todo
+const int error::unauthorized_vote_submition = 710;
 
 ;; jetton minter errors
 const int error::discovery_fee_not_matched = 75;
@@ -22,6 +22,9 @@ const int error::unauthorized_change_content_request = 77;
 const int error::unauthorized_vote_execution = 78;
 const int error::unauthorized_code_upgrade_request = 79;
 const int error::voting_discovery_fee_not_matched = 80;
+const int error::forbidden_vote_id = 81;
+const int error::forbidden_voting_type = 82;
+const int error::mint_fee_not_matched = 83;
 
 ;; voting errors
 const int error::already_inited = 0xf3;
@@ -35,6 +38,13 @@ const int error::voting_already_executed = 0xf8;
 const int error::voting_already_finished = 0xf9;
 
 const int error::expiration_date_too_high = 0xf10;
+
 ;; vote controller errors
 const int error::unauthorized_request_vote = 0x1f4;
 const int error::no_new_votes = 0x1f5;
+
+;; voting results errors
+const int error::already_finished = 0x2f5;
+const int error::unauthorized_vote_results = 0x2f6;
+const int error::voting_id_mismatch = 0x2f7;
+const int error::results_discovery_fee_not_matched = 0x2f8;

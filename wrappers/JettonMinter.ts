@@ -106,33 +106,50 @@ export class JettonMinter implements Contract {
         });
     }
 
-    static createVotingMessage(expiration_date: bigint,
-                               minimal_execution_amount:bigint,
-                               /*destination: Address, amount:bigint,*/ payload:Cell,
-                               voting_type: bigint = 0n,
-                               description: string = "Sample description") {
+    static createSimpleMsgVotingMessage(expiration_date: bigint,
+                                        minimal_execution_amount:bigint,
+                                        payload:Cell,
+                                        voting_type:bigint,
+                                        description: string = "Sample description") {
         let forwardMsgBuilder = beginCell();
-        //storeMessageRelaxed(internal({to:destination, value:amount, body:payload}))(forwardMsgBuilder);
+        // storeMessageRelaxed(internal({to:destination, value:amount, body:payload}))(forwardMsgBuilder);
         let forwardMsg = forwardMsgBuilder.endCell();
-        let proposal   = Voting.createProposalBody(minimal_execution_amount, payload, description);
+        let proposal = Voting.createSendMsgProposalBody(minimal_execution_amount, payload, description);
         return beginCell().storeUint(Op.minter.create_voting, 32).storeUint(0, 64) // op, queryId
-                          .storeUint(voting_type, 64)
                           .storeUint(expiration_date, 48)
                           .storeRef(proposal)
-               .endCell();
+                          .storeUint(voting_type, 64)
+                       .endCell();
     }
-
-    async sendCreateVoting(provider: ContractProvider, via: Sender, expiration_date: bigint,
+    async sendCreateSimpleMsgVoting(provider: ContractProvider, via: Sender, expiration_date: bigint,
                            minimal_execution_amount:bigint,
-                           /*destination: Address, amount:bigint,*/ payload:Cell,
-                           voting_type: bigint = 0n,
+                           payload:Cell,
+                           voting_type:bigint = 0n,
                            description: string = "Sample description") {
         await provider.internal(via, {
             sendMode: SendMode.PAY_GAS_SEPARATELY,
-            body: JettonMinter.createVotingMessage(expiration_date, minimal_execution_amount, /*destination, amount,*/ payload, voting_type, description),
+            body: JettonMinter.createSimpleMsgVotingMessage(expiration_date, minimal_execution_amount, payload, voting_type, description),
             value: toNano("0.1") + minimal_execution_amount,
         });
     }
+
+    static createPollVotingMessage(duration: bigint | number, body: string | Cell = "Sample description") {
+        let voting_body = Voting.createPollProposal(duration, body);
+        return beginCell().storeUint(Op.minter.create_voting, 32).storeUint(0, 64) // op, queryId
+                          .storeUint(0, 48) // unused expiration date
+                          .storeRef(voting_body)
+                          .storeUint(1, 64) // voting type
+                       .endCell();
+    }
+
+    async sendCreatePollVoting(provider: ContractProvider, via: Sender, duration: bigint | number,
+                               body: string | Cell = "Sample description") {
+        await provider.internal(via, {
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            body: JettonMinter.createPollVotingMessage(duration, body),
+            value: toNano("0.1"),
+        });
+                               }
     static createCodeUpgradeMessage(minter_code: Cell | null, voting_code: Cell | null, query_id:bigint = 0n) {
         return beginCell().storeUint(Op.minter.upgrade_code, 32)
                           .storeUint(query_id, 64)
