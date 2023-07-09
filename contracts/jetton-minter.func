@@ -369,7 +369,7 @@ int is_proposal_accepted(int voted_for, int voted_against, int total_votes) inli
         slice voter_wallet = calc_user_wallet(voter, my_address(), jetton_wallet_code());
         ;;confirm_voting query_id:uint64 = InternalMsgBody; // DAO -> voter_wallet
         var msg = begin_cell()
-                .store_msg_flag(msg_flag::bounceable)
+                .store_msg_flag(msg_flag::non_bounceable)
                 .store_slice(voter_wallet)
                 .store_coins(0)
                 .store_msgbody_prefix_slice()
