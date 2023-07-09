@@ -84,7 +84,8 @@ describe('JettonWallet', () => {// return;
                 on:   jettonMinter.address,
                 body: JettonMinter.createSimpleMsgVotingMessage(expDate,
                                                        minExecution,
-                                                       prop)
+                                                       prop,
+                                                       0n)
 
             };
 
@@ -506,13 +507,13 @@ describe('JettonWallet', () => {// return;
 
     });
 
-    it('wallet owner should be able to burn jettons with cusom payload', async () => {
+    it('wallet owner should be able to burn jettons with custom payload', async () => {
             const deployerJettonWallet = await userWallet(deployer.address);
             let initialJettonBalance = await deployerJettonWallet.getJettonBalance();
             let initialTotalSupply = await jettonMinter.getTotalSupply();
             let burnAmount = toNano('0.01');
             const customPaylaod = beginCell().storeCoins(getRandomTon(1000, 2000)).endCell();
-            const sendResult = await deployerJettonWallet.sendBurn(deployer.getSender(), toNano('0.1'), // ton amount
+            const sendResult = await deployerJettonWallet.sendBurn(deployer.getSender(), toNano('1'), // ton amount
                                  burnAmount, deployer.address, customPaylaod); // amount, response address, custom payload
             expect(sendResult.transactions).toHaveTransaction({ //burn notification
                 from: deployerJettonWallet.address,
@@ -544,7 +545,7 @@ describe('JettonWallet', () => {// return;
               let initialJettonBalance = await deployerJettonWallet.getJettonBalance();
               let initialTotalSupply = await jettonMinter.getTotalSupply();
               let burnAmount = toNano('0.01');
-              const sendResult = await deployerJettonWallet.sendBurn(notDeployer.getSender(), toNano('0.1'), // ton amount
+              const sendResult = await deployerJettonWallet.sendBurn(notDeployer.getSender(), toNano('1'), // ton amount
                                     burnAmount, deployer.address, null); // amount, response address, custom payload
               expect(sendResult.transactions).toHaveTransaction({
                  from: notDeployer.address,
@@ -561,7 +562,7 @@ describe('JettonWallet', () => {// return;
                 let initialJettonBalance = await deployerJettonWallet.getJettonBalance();
                 let initialTotalSupply = await jettonMinter.getTotalSupply();
                 let burnAmount = initialJettonBalance + 1n;
-                const sendResult = await deployerJettonWallet.sendBurn(deployer.getSender(), toNano('0.1'), // ton amount
+                const sendResult = await deployerJettonWallet.sendBurn(deployer.getSender(), toNano('1'), // ton amount
                                         burnAmount, deployer.address, null); // amount, response address, custom payload
                 expect(sendResult.transactions).toHaveTransaction({
                      from: deployer.address,

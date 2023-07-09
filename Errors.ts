@@ -10,7 +10,7 @@ export abstract class Errors {
 		unauthorized_incoming_transfer : 707,
 		malformed_forward_payload : 708,
 		not_enough_tons : 709,
-		burn_fee_not_matched : 707,
+		burn_fee_not_matched : 711,
 		unknown_action : 0xFFFF,
 		unknown_action_bounced : 0xFFF0,
 		unauthorized_vote_submition : 710 //todo

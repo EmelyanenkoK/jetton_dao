@@ -68,7 +68,7 @@ voting_confirmation#2ccba006 query_id:uint64 voting_address:MsgAddressInt = Inte
 
 // DAO interface
 // in
-create_voting#1c7f9a1a query_id:uint64 expiration_date:uint48 proposal:^Proposal = InternalMsgBody;
+create_voting#1c7f9a1a query_id:uint64 expiration_date:uint48 voting_type:uint64 proposal:^Proposal = InternalMsgBody;
 execute_vote_result#4f0f7510 query_id:uint64 voting_id:uint64 expiration_date:uint48 voted_for:Coins voted_against:Coins message:^Cell = InternalMsgBody;
 voting_initiated#8e2abb23 query_id:uint64 voting_id:uint64 expiration_date:uint48 initiator:MsgAddressInt = InternalMsgBody; // voting -> DAO
 request_confirm_voting#0222fdcb query_id:uint64 voting_id:uint64 voter:MsgAddressInt  = InternalMsgBody; // Voting -> DAO
