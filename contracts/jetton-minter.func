@@ -237,9 +237,8 @@ int is_proposal_accepted(int voted_for, int voted_against, int total_votes) inli
         (int expiration_date, cell proposal) = (in_msg_body~load_uint(48), in_msg_body~load_ref());
         int voting_type = in_msg_body~load_uint(64);
         if(external_param::only_polls) {
-            ;; FIXME: not wrong vote id, but voting type
-            ;; also need to check here if type is 2 or more?
-            throw_unless( error::forbidden_vote_id, voting_type == 1);
+            ;; allow only polls: voting_type == 1
+            throw_unless( error::forbidden_voting_type, voting_type == 1);
         }
 
         if(voting_type == 0) { ;; simple execution

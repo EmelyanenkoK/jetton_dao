@@ -2127,7 +2127,7 @@ describe('DAO integrational', () => {
             from: user1.address,
             to: _DAO.address,
             success: false,
-            exitCode: Errors.minter.forbidden_vote_id
+            exitCode: Errors.minter.forbidden_voting_type
         });
     });
 });
