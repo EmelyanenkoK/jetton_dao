@@ -24,6 +24,7 @@ const int error::unauthorized_code_upgrade_request = 79;
 const int error::voting_discovery_fee_not_matched = 80;
 const int error::forbidden_vote_id = 81;
 const int error::forbidden_voting_type = 82;
+const int error::mint_fee_not_matched = 83;
 
 ;; voting errors
 const int error::already_inited = 0xf3;
