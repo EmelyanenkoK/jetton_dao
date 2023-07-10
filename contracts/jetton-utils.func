@@ -1,4 +1,3 @@
-#include "types.func";
 cell pack_jetton_wallet_data (int balance, slice owner,
                               slice jetton_master, cell token_wallet_code,
                               int locked, int locked_expiration) inline {
