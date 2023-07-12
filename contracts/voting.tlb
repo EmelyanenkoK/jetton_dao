@@ -100,4 +100,4 @@ init_voting_results#66afdef2 query_id:uint64 voting_id:uint64 = InternalMsgBody;
 send_vote_result#57fe3672 query_id:uint64 voting_id:uint64 voted_for:Coins voted_against:Coins = InternalMsgBody;
 provide_voting_results#7546a34d query_id:uint64 = InternalMsgBody;
 //out
-take_voting_results#d1bb7471 query_id:uint64 voting_body:^Cell voting_duration:uint48 dao_address:MsgAddress finished:Bool voting_id:uint64 votes_for:Coins votes_against:Coins = InternalMsgBody;
+take_voting_results#d1bb7471 query_id:uint64 voting_body:^Cell voting_duration:uint48 dao_address:MsgAddress finished:uint48 voting_id:uint64 votes_for:Coins votes_against:Coins = InternalMsgBody;
