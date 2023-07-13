@@ -61,7 +61,8 @@ const int provide_results_gas_consumption = 6000000; ;; 0.006 TON
         (int init?, cell voting_body, int voting_duration, slice dao_address,
          int voting_ending, int voting_id, int votes_for, int votes_against) = load_data();
         if(init?) {
-            if((voting_ending > 0) & (now() > voting_ending + voting_duration)) {
+            int voting_results_reinit_tumeout = voting_duration;
+            if((voting_ending > 0) & (now() > voting_ending + voting_results_reinit_tumeout)) {
                 ;; voting result matured, it can be reinit
             } else {
                 throw(error::already_inited);
