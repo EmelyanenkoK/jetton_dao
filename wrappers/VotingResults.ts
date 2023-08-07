@@ -12,7 +12,7 @@ export type VotingResultsData = {
     votingBody: Cell;
     votingDuration: number;
     daoAddress: Address;
-    finished: boolean;
+    votingEnding: bigint;
     votingId: bigint;
     votesFor: bigint;
     votesAgainst: bigint;
@@ -74,7 +74,7 @@ export class VotingResults implements Contract {
 
 /*
       return (init?, voting_body, voting_duration, dao_address,
-              finished?, voting_id, votes_for, votes_against);
+              voting_ending, voting_id, votes_for, votes_against);
 */
     async getData(provider: ContractProvider) {
         let { stack } = await provider.get('get_voting_results', []);
@@ -82,16 +82,16 @@ export class VotingResults implements Contract {
         let votingBody = stack.readCell();
         let votingDuration = stack.readNumber();
         let daoAddress = stack.readAddress();
-        let finished = stack.readBoolean();
+        let votingEnding = stack.readBigNumber();
         let votingId = stack.readBigNumber();
         let votesFor = stack.readBigNumber();
         let votesAgainst = stack.readBigNumber();
         return {init, votingBody, votingDuration, daoAddress,
-                 finished, votingId, votesFor, votesAgainst};
+                 votingEnding, votingId, votesFor, votesAgainst};
     }
 /*
     take_voting_results query_id:uint64 voting_body:^Cell voting_duration:uint48
-                        dao_address:MsgAddress finished:Bool voting_id:uint64
+                        dao_address:MsgAddress voting_ending:uint48 voting_id:uint64
                         votes_for:Coins votes_against:Coins
                         = InternalMsgBody;
 */
@@ -105,22 +105,22 @@ export class VotingResults implements Contract {
         let votingBody = cs.loadRef();
         let votingDuration = cs.loadUint(48);
         let daoAddress = cs.loadAddress();
-        let finished: boolean;
+        let votingEnding: bigint;
         let votingId: bigint;
         let votesFor: bigint;
         let votesAgainst: bigint;
         if (!init) {
-            finished = false;
+            votingEnding = 0n;
             votingId = -1n;
             votesFor = 0n;
             votesAgainst = 0n;
         } else {
-            finished = cs.loadBit();
+            votingEnding = cs.loadUintBig(48);
             votingId = cs.loadUintBig(64);
             votesFor = cs.loadCoins();
             votesAgainst = cs.loadCoins();
         }
         return {init, votingBody, votingDuration, daoAddress,
-                 finished, votingId, votesFor, votesAgainst};
+                 votingEnding, votingId, votesFor, votesAgainst};
     }
 }

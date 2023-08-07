@@ -1567,7 +1567,7 @@ describe('DAO integrational', () => {
                 expect(resultsContractData.votingBody).toEqualCell(pollBody);
                 expect(resultsContractData.votingDuration).toEqual(duration);
                 expect(resultsContractData.daoAddress.equals(DAO.address)).toBe(true);
-                expect(resultsContractData.finished).toEqual(false);
+                expect(resultsContractData.votingEnding).toEqual(0n);
         });
         it('should vote and end with sending', async () => {
             let voting = await votingContract(votingId);
@@ -1614,7 +1614,7 @@ describe('DAO integrational', () => {
             expect(resultsData.votingBody).toEqualCell(pollBody);
             expect(resultsData.votingDuration).toEqual(duration);
             expect(resultsData.daoAddress.equals(DAO.address)).toBe(true);
-            expect(resultsData.finished).toEqual(true);
+            expect(resultsData.votingEnding > 0).toEqual(true);
         });
         it('should not create with zero duration', async () => {
             const voting = await votingContract(++votingId);
@@ -1727,7 +1727,7 @@ describe('DAO integrational', () => {
             expect(resultsData.votingId).toEqual(-1n); // doesn't know his voting id yet
             expect(resultsData.daoAddress.equals(DAO.address)).toBe(true);
             expect(resultsData.init).toEqual(false);
-            expect(resultsData.finished).toEqual(false);
+            expect(resultsData.votingEnding).toEqual(0n);
             expect(resultsData.votesFor).toEqual(0n);
             expect(resultsData.votesAgainst).toEqual(0n);
         });
@@ -1750,7 +1750,7 @@ describe('DAO integrational', () => {
             const resultsData = await votingResults.getData();
             expect(resultsData.votingId).toEqual(-1n);
             expect(resultsData.init).toEqual(false);
-            expect(resultsData.finished).toEqual(false);
+            expect(resultsData.votingEnding).toEqual(0n);
             expect(resultsData.votesFor).toEqual(0n);
             expect(resultsData.votesAgainst).toEqual(0n);
         });
@@ -1770,7 +1770,7 @@ describe('DAO integrational', () => {
             expect(resultsData.votingId).toEqual(votingId);
             expect(resultsData.daoAddress.equals(DAO.address)).toBe(true);
             expect(resultsData.init).toEqual(true);
-            expect(resultsData.finished).toEqual(false);
+            expect(resultsData.votingEnding).toEqual(0n);
             expect(resultsData.votesFor).toEqual(0n);
             expect(resultsData.votesAgainst).toEqual(0n);
         });
@@ -1791,7 +1791,7 @@ describe('DAO integrational', () => {
             expect(resultsData.votingId).toEqual(votingId);
             expect(resultsData.daoAddress.equals(DAO.address)).toBe(true);
             expect(resultsData.init).toEqual(true);
-            expect(resultsData.finished).toEqual(false);
+            expect(resultsData.votingEnding).toEqual(0n);
             expect(resultsData.votesFor).toEqual(0n);
             expect(resultsData.votesAgainst).toEqual(0n);
         });
@@ -1810,7 +1810,7 @@ describe('DAO integrational', () => {
             const resultsData = await votingResults.getData();
             expect(resultsData.votingId).toEqual(votingId);
             expect(resultsData.init).toEqual(true);
-            expect(resultsData.finished).toEqual(false);
+            expect(resultsData.votingEnding).toEqual(0n);
             expect(resultsData.votesFor).toEqual(0n);
             expect(resultsData.votesAgainst).toEqual(0n);
         });
@@ -1834,7 +1834,7 @@ describe('DAO integrational', () => {
             const resultsData = await votingResults.getData();
             expect(resultsData.votingId).toEqual(votingId);
             expect(resultsData.init).toEqual(true);
-            expect(resultsData.finished).toEqual(false);
+            expect(resultsData.votingEnding).toEqual(0n);
             expect(resultsData.votesFor).toEqual(0n);
             expect(resultsData.votesAgainst).toEqual(0n);
         });
@@ -1854,7 +1854,7 @@ describe('DAO integrational', () => {
             expect(resultsData.votingId).toEqual(votingId);
             expect(resultsData.daoAddress.equals(DAO.address)).toBe(true);
             expect(resultsData.init).toEqual(true);
-            expect(resultsData.finished).toEqual(true);
+            expect(resultsData.votingEnding > 0n).toEqual(true);
             expect(resultsData.votesFor).toEqual(votedFor);
             expect(resultsData.votesAgainst).toEqual(votedAgainst);
         });
@@ -1875,7 +1875,7 @@ describe('DAO integrational', () => {
             expect(resultsData.votingId).toEqual(votingId);
             expect(resultsData.daoAddress.equals(DAO.address)).toBe(true);
             expect(resultsData.init).toEqual(true);
-            expect(resultsData.finished).toEqual(true);
+            expect(resultsData.votingEnding > 0n).toEqual(true);
             expect(resultsData.votesFor).toEqual(votedFor);
             expect(resultsData.votesAgainst).toEqual(votedAgainst);
         });
@@ -1925,7 +1925,7 @@ describe('DAO integrational', () => {
             expect(parsedResponse.votingId).toEqual(resultsData.votingId);
             expect(parsedResponse.votesFor).toEqual(resultsData.votesFor);
             expect(parsedResponse.votesAgainst).toEqual(resultsData.votesAgainst);
-            expect(parsedResponse.finished).toEqual(resultsData.finished);
+            expect(parsedResponse.votingEnding).toEqual(resultsData.votingEnding);
             expect(parsedResponse.votingDuration).toEqual(resultsData.votingDuration);
             expect(parsedResponse.daoAddress.equals(resultsData.daoAddress)).toBe(true);
             expect(parsedResponse.init).toEqual(resultsData.init);
@@ -1975,7 +1975,7 @@ describe('DAO integrational', () => {
             expect(parsedResponse.votingId).toEqual(resultsData.votingId);
             expect(parsedResponse.votesFor).toEqual(resultsData.votesFor);
             expect(parsedResponse.votesAgainst).toEqual(resultsData.votesAgainst);
-            expect(parsedResponse.finished).toEqual(resultsData.finished);
+            expect(parsedResponse.votingEnding).toEqual(resultsData.votingEnding);
             expect(parsedResponse.votingDuration).toEqual(resultsData.votingDuration);
             expect(parsedResponse.daoAddress.equals(resultsData.daoAddress)).toBe(true);
             expect(parsedResponse.init).toEqual(resultsData.init);
@@ -2035,7 +2035,7 @@ describe('DAO integrational', () => {
                 expect(resultsData.votingId).toEqual(votingId - 1n);
                 expect(resultsData.votingBody).toEqualCell(pollBody);
                 expect(resultsData.votingDuration).toEqual(duration);
-                expect(resultsData.finished).toEqual(false);
+                expect(resultsData.votingEnding).toEqual(0n);
                 expect(resultsData.votesFor).toEqual(0n);
                 expect(resultsData.votesAgainst).toEqual(0n);
                 expect(resultsData.daoAddress.equals(DAO.address)).toBe(true);
@@ -2069,7 +2069,7 @@ describe('DAO integrational', () => {
                 const votingData2 = await voting2.getFullData();
                 expect(votingData2.executed).toEqual(true);
                 const resultsData = await votingResults.getData();
-                expect(resultsData.finished).toEqual(false);
+                expect(resultsData.votingEnding).toEqual(0n);
             });
             it('first voting should finish successfully', async () => {
                 const endRes1 = await voting1.sendEndVoting(user1.getSender());
@@ -2082,7 +2082,7 @@ describe('DAO integrational', () => {
                 const votingData1 = await voting1.getFullData();
                 expect(votingData1.executed).toEqual(true);
                 const resultsData = await votingResults.getData();
-                expect(resultsData.finished).toEqual(true);
+                expect(resultsData.votingEnding > 0n).toEqual(true);
                 expect(resultsData.votesFor).toEqual(initialUser3Balance);
                 expect(resultsData.votesAgainst).toEqual(0n);
             });

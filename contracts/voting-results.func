@@ -23,25 +23,25 @@ const int provide_results_gas_consumption = 6000000; ;; 0.006 TON
     slice dao_address = cs~load_msg_addr();
 
     if(init?) {
-      int finished? = cs~load_bool();
+      int voting_ending = cs~load_timestamp();
       int voting_id = cs~load_voting_id();
       int votes_for = cs~load_coins();
       int votes_against = cs~load_coins();
       return (init?, voting_body, voting_duration, dao_address,
-              finished?, voting_id, votes_for, votes_against);
+              voting_ending, voting_id, votes_for, votes_against);
     } else {
         return (init?, voting_body, voting_duration, dao_address,
-                false, -1, 0, 0);
+                0, -1, 0, 0);
     }
 }
 () save_data(int init?, cell voting_body, int voting_duration, slice dao_address,
-             int finished?, int voting_id, int votes_for, int votes_against) impure inline {
+             int voting_ending, int voting_id, int votes_for, int votes_against) impure inline {
     var data = begin_cell().store_bool(init?)
                            .store_ref(voting_body)
                            .store_timestamp(voting_duration)
                            .store_slice(dao_address);
     if (init?) {
-        data = data.store_bool(finished?)
+        data = data.store_timestamp(voting_ending)
                    .store_voting_id(voting_id)
                    .store_coins(votes_for)
                    .store_coins(votes_against);
@@ -59,34 +59,41 @@ const int provide_results_gas_consumption = 6000000; ;; 0.006 TON
     (int op, int query_id) = in_msg_body~load_body_header();
     if (op == op::init_voting_results) {
         (int init?, cell voting_body, int voting_duration, slice dao_address,
-         int finished?, int voting_id, int votes_for, int votes_against) = load_data();
-        throw_if(error::already_inited, init?);
+         int voting_ending, int voting_id, int votes_for, int votes_against) = load_data();
+        if(init?) {
+            int voting_results_reinit_tumeout = voting_duration;
+            if((voting_ending > 0) & (now() > voting_ending + voting_results_reinit_tumeout)) {
+                ;; voting result matured, it can be reinit
+            } else {
+                throw(error::already_inited);
+            }
+        }
         throw_unless(error::unauthorized_init, equal_slice_bits(sender_address, dao_address));
         voting_id = in_msg_body~load_voting_id();
         init? = true;
-        finished? = false;
+        voting_ending = 0;
         votes_for = votes_against = 0;
         return save_data(init?, voting_body, voting_duration, dao_address,
-                         finished?, voting_id, votes_for, votes_against);
+                         voting_ending, voting_id, votes_for, votes_against);
     } 
     if (op == op::send_vote_result) {
         (int init?, cell voting_body, int voting_duration, slice dao_address,
-         int finished?, int voting_id, int votes_for, int votes_against) = load_data();
+         int voting_ending, int voting_id, int votes_for, int votes_against) = load_data();
         throw_unless(error::not_inited, init?);
-        throw_if(error::already_finished , finished?);
+        throw_if(error::already_finished , voting_ending);
         throw_unless(error::unauthorized_vote_results, equal_slice_bits(sender_address, dao_address));
         int incoming_voting_id = in_msg_body~load_voting_id();
         throw_unless(error::voting_id_mismatch , voting_id == incoming_voting_id);
         votes_for = in_msg_body~load_coins();
         votes_against = in_msg_body~load_coins();
-        finished? = true;
+        voting_ending = now();
         return save_data(init?, voting_body, voting_duration, dao_address,
-                finished?, voting_id, votes_for, votes_against);
+                voting_ending, voting_id, votes_for, votes_against);
     } 
     if (op == op::provide_voting_results) {
         cs~load_msg_addr(); ;; skip dst
         cs~load_coins(); ;; skip value
-        cs~skip_bits(1); ;; skip extracurrency collection
+        cs~load_dict(); ;; skip extracurrency collection
         cs~load_coins(); ;; skip ihr_fee
         int fwd_fee = muldiv(cs~load_coins(), 3, 2);
         throw_unless(error::results_discovery_fee_not_matched, msg_value >= fwd_fee + provide_results_gas_consumption);
@@ -107,7 +114,7 @@ const int provide_results_gas_consumption = 6000000; ;; 0.006 TON
 }
 
 ;;    (int init?, cell voting_body, int voting_duration, slice dao_address,
-;;     int finished?, int voting_id, int votes_for, int votes_against)
+;;     int voting_ending, int voting_id, int votes_for, int votes_against)
 var get_voting_results() method_id {
   return load_data();
 }
