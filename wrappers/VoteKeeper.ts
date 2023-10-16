@@ -1,4 +1,4 @@
-import { Address, beginCell, Cell, Contract, contractAddress, ContractProvider, Sender, SendMode, toNano } from 'ton-core';
+import { Address, beginCell, Cell, Contract, contractAddress, ContractProvider, Sender, SendMode, toNano } from '@ton/core';
 
 export class VoteKeeper implements Contract {
     constructor(readonly address: Address, readonly init?: { code: Cell; data: Cell }) {}

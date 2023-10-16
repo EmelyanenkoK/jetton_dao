@@ -1,13 +1,13 @@
-import { Blockchain, SandboxContract, TreasuryContract, Verbosity, internal, printTransactionFees } from '@ton-community/sandbox';
-import { Cell, toNano, fromNano, beginCell, storeMessageRelaxed, Address, SendMode, OpenedContract, AccountStorage, Dictionary } from 'ton-core';
+import { Blockchain, SandboxContract, TreasuryContract, Verbosity, internal, printTransactionFees } from '@ton/sandbox';
+import { Cell, toNano, fromNano, beginCell, storeMessageRelaxed, Address, SendMode, OpenedContract, AccountStorage, Dictionary } from '@ton/core';
 import { JettonWallet } from '../../wrappers/JettonWallet';
 import { JettonMinter } from '../../wrappers/JettonMinter';
 import { JettonMinterTests } from '../../wrappers/JettonMinterTests';
 import { Voting } from '../../wrappers/Voting';
 import { VotingResults } from '../../wrappers/VotingResults';
 import { VoteKeeper } from '../../wrappers/VoteKeeper';
-import '@ton-community/test-utils';
-import { compile } from '@ton-community/blueprint';
+import '@ton/test-utils';
+import { compile } from '@ton/blueprint';
 import { assertVoteChain, differentAddress, getRandom, getRandomDuration, getRandomExp, getRandomInt, getRandomPayload, getRandomTon, voteCtx, ActiveWallet, ActiveJettonWallet, pickWinnerResult, sortBalanceResult } from "../utils";
 import { VotingTests } from '../../wrappers/VotingTests';
 import { VoteKeeperTests } from '../../wrappers/VoteKeeperTests';
