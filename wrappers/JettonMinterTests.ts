@@ -1,4 +1,4 @@
-import { Address, Cell, beginCell, Sender, ContractProvider, SendMode, toNano, contractAddress } from "ton-core";
+import { Address, Cell, beginCell, Sender, ContractProvider, SendMode, toNano, contractAddress } from "@ton/core";
 import { Op } from "../Ops";
 import { JettonMinter, JettonMinterConfig, jettonMinterConfigToCell } from "./JettonMinter";
 export class JettonMinterTests extends JettonMinter {

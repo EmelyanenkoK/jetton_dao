@@ -1,11 +1,11 @@
-import { Blockchain, SandboxContract, TreasuryContract, Verbosity, internal, SendMessageResult } from '@ton-community/sandbox';
-import { Cell, toNano, beginCell, Address, SendMode, Sender, Dictionary } from 'ton-core';
+import { Blockchain, SandboxContract, TreasuryContract, Verbosity, internal, SendMessageResult } from '@ton/sandbox';
+import { Cell, toNano, beginCell, Address, SendMode, Sender, Dictionary } from '@ton/core';
 import { JettonWallet, jettonWalletConfigToCell } from '../../wrappers/JettonWallet';
 import { JettonMinter, jettonMinterConfigToCell } from '../../wrappers/JettonMinter';
 import { Voting } from '../../wrappers/Voting';
 import { VoteKeeper } from '../../wrappers/VoteKeeper';
-import '@ton-community/test-utils';
-import { compile } from '@ton-community/blueprint';
+import '@ton/test-utils';
+import { compile } from '@ton/blueprint';
 import { getRandom, getRandomExp, getRandomInt, getRandomPayload, getRandomTon, randomAddress, renewExp, ActiveWallet, ActiveJettonWallet, commonMsg } from "../utils";
 import { JettonWalletTests } from '../../wrappers/JettonWalletTests';
 import { Op } from "../../Ops";

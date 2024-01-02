@@ -1,4 +1,4 @@
-import { Address, beginCell, Cell, Contract, contractAddress, ContractProvider, Sender, SendMode, toNano } from 'ton-core';
+import { Address, beginCell, Cell, Contract, contractAddress, ContractProvider, Sender, SendMode, toNano } from '@ton/core';
 import { VoteKeeper } from './VoteKeeper';
 import { Op } from '../Ops';
 export class VoteKeeperTests extends VoteKeeper {

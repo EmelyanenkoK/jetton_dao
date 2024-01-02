@@ -1,8 +1,8 @@
-import { compile } from "@ton-community/blueprint";
-import { Blockchain, SandboxContract } from "@ton-community/sandbox";
-import { Address, Cell, ContractProvider } from "ton-core";
+import { compile } from "@ton/blueprint";
+import { Blockchain, SandboxContract } from "@ton/sandbox";
+import { Address, Cell, ContractProvider } from "@ton/core";
 import { Voting } from "../../wrappers/Voting";
-import '@ton-community/test-utils';
+import '@ton/test-utils';
 import { ActiveWallet, getRandomExp, getRandomInt, getRandomPayload, randomAddress } from "../utils";
 import { VotingTests } from "../../wrappers/VotingTests";
 import { JettonMinterTests } from "../../wrappers/JettonMinterTests";
